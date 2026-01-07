@@ -243,9 +243,26 @@
                               'Vancouver Canucks', 'Vegas Golden Knights', 'Washington Capitals', 'Winnipeg Jets'
                           ];
 
-                let players = JSON.parse(localStorage.getItem('tlPlayers')) || [];
-                let drafts = JSON.parse(localStorage.getItem('tlDrafts')) || [];
-
+let players = [
+  {id: '1', name: 'Oilers'},
+  {id: '2', name: 'Leafs'},
+  {id: '3', name: 'Panthers'},
+  {id: '4', name: 'Blues'},
+  {id: '5', name: 'Mammoth'},
+  {id: '6', name: 'Islanders'},
+  {id: '7', name: 'Flyers'},
+  {id: '8', name: 'Blackhawks'}
+          ];
+                let drafts = [
+                  {id: '1', playerId: '1', team: 'Hurricanes', wins: 0},
+                  {id: '2', playerId: '2', team: 'Lightning', wins: 0},
+                  {id: '3', playerId: '3', team: 'Devils', wins: 0},
+                  {id: '4', playerId: '4', team: 'Capitals', wins: 0},
+                  {id: '5', playerId: '5', team: 'Canucks', wins: 0},
+                  {id: '6', playerId: '6', team: 'Predators', wins: 0},
+                  {id: '7', playerId: '7', team: 'Wings', wins: 0},
+                  {id: '8', playerId: '8', team: 'Sharks', wins: 0}
+                          ];
                 function initializeTeamSelect() {
                               const select = document.getElementById('teamSelect');
                               select.innerHTML = '<option value="">Select an NHL team...</option>';
