@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NHL Team League 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;600;700;800;900&family=Playfair+Display:wght@700;800;900&display=swap" rel="stylesheet">
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Libre Franklin',sans-serif;background:#FAFAF8}
+button{cursor:pointer;font-family:inherit;border:none}
+button:active{transform:scale(.97)}
+input{font-family:inherit}
+input:focus{outline:2px solid #2563EB}
+table{border-collapse:collapse}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@media(max-width:640px){
+.hdr{padding:14px 12px 10px!important}
+.hdr-row{flex-direction:column!important;align-items:flex-start!important;gap:6px}
+.hdr h1{font-size:20px!important}
+.tabs{overflow-x:auto}
+.tabs button{padding:7px 10px!important;font-size:8px!important;white-space:nowrap}
+.prizes{flex-direction:column!important}
+.st th,.st td{padding:8px 4px!important;font-size:10px!important}
+.st td:nth-child(5),.st th:nth-child(5),.st td:nth-child(6),.st th:nth-child(6),.st td:nth-child(7),.st th:nth-child(7){display:none}
+.rosters{grid-template-columns:1fr!important}
+.dt{font-size:9px!important}
+.dt th,.dt td{padding:5px 4px!important}
+.divs{grid-template-columns:1fr!important}
+.cnt{padding:12px 10px!important}
+.bracket-grid{grid-template-columns:1fr!important}
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+var MNAMES=["Rippe","Swag","G$","Gainzy"];
+var ROSTERS=[["Stars","Avalanche","Rangers","Senators","Canadiens","Ducks","Sabres","Bruins"],["Hurricanes","Lightning","Devils","Capitals","Canucks","Predators","Red Wings","Sharks"],["Oilers","Maple Leafs","Panthers","Blues","Mammoth","Islanders","Flyers","Blackhawks"],["Golden Knights","Jets","Wild","Kings","Blue Jackets","Flames","Kraken","Penguins"]];
+
+/* ── FINAL REGULAR SEASON STANDINGS — Season Complete 2026-04-16 ── */
+var RC={
+  "Stars":{w:50,l:20},"Avalanche":{w:55,l:16},"Rangers":{w:34,l:39},"Senators":{w:44,l:27},
+  "Canadiens":{w:48,l:24},"Ducks":{w:43,l:33},"Sabres":{w:50,l:23},"Bruins":{w:45,l:27},
+  "Hurricanes":{w:53,l:22},"Lightning":{w:50,l:26},"Devils":{w:42,l:37},"Capitals":{w:43,l:30},
+  "Canucks":{w:25,l:49},"Predators":{w:38,l:34},"Red Wings":{w:41,l:31},"Sharks":{w:39,l:35},
+  "Oilers":{w:41,l:30},"Maple Leafs":{w:32,l:36},"Panthers":{w:40,l:38},"Blues":{w:37,l:33},
+  "Mammoth":{w:43,l:33},"Islanders":{w:43,l:34},"Flyers":{w:43,l:27},"Blackhawks":{w:29,l:39},
+  "Golden Knights":{w:39,l:26},"Jets":{w:35,l:35},"Wild":{w:46,l:24},"Kings":{w:35,l:27},
+  "Blue Jackets":{w:40,l:30},"Flames":{w:34,l:39},"Kraken":{w:34,l:37},"Penguins":{w:41,l:25}
+};
+
+/* ── Teams eliminated (did not make playoffs) ── */
+var ELIMINATED=["Canucks","Maple Leafs","Panthers","Rangers","Blackhawks","Flames","Red Wings","Devils","Capitals","Blue Jackets","Islanders","Sharks","Kraken","Blues","Predators","Jets"];
+
+/* ── Teams IN the 2026 Stanley Cup Playoffs ── */
+var PLAYOFF_TEAMS=["Sabres","Lightning","Canadiens","Bruins","Senators","Hurricanes","Penguins","Flyers","Avalanche","Stars","Wild","Mammoth","Golden Knights","Oilers","Ducks","Kings"];
+
+/* ── First Round Bracket + Series Status (updated 2026-04-20) ── */
+var PLAYOFF_BRACKET=[
+  {conf:"East",label:"Atlantic",higher:"Sabres",lower:"Bruins",seed_h:"1A",seed_l:"WC1",series:"BUF leads 1-0",hw:1,lw:0},
+  {conf:"East",label:"Atlantic",higher:"Lightning",lower:"Canadiens",seed_h:"2A",seed_l:"3A",series:"MTL leads 1-0",hw:0,lw:1},
+  {conf:"East",label:"Metro",higher:"Hurricanes",lower:"Senators",seed_h:"1M",seed_l:"WC2",series:"CAR leads 1-0",hw:1,lw:0},
+  {conf:"East",label:"Metro",higher:"Penguins",lower:"Flyers",seed_h:"2M",seed_l:"3M",series:"PHI leads 1-0",hw:0,lw:1},
+  {conf:"West",label:"Central",higher:"Avalanche",lower:"Kings",seed_h:"1C",seed_l:"WC2",series:"COL leads 1-0",hw:1,lw:0},
+  {conf:"West",label:"Central",higher:"Stars",lower:"Wild",seed_h:"2C",seed_l:"3C",series:"MIN leads 1-0",hw:0,lw:1},
+  {conf:"West",label:"Pacific",higher:"Golden Knights",lower:"Mammoth",seed_h:"1P",seed_l:"WC1",series:"VGK leads 1-0",hw:1,lw:0},
+  {conf:"West",label:"Pacific",higher:"Oilers",lower:"Ducks",seed_h:"2P",seed_l:"3P",series:"Series begins tonight",hw:0,lw:0}
+];
+
+var DIVS=[{name:"Atlantic",conf:"East",teams:["Sabres","Lightning","Canadiens","Bruins","Red Wings","Senators","Panthers","Maple Leafs"]},{name:"Metropolitan",conf:"East",teams:["Hurricanes","Penguins","Blue Jackets","Islanders","Flyers","Capitals","Devils","Rangers"]},{name:"Central",conf:"West",teams:["Avalanche","Stars","Wild","Mammoth","Predators","Jets","Blues","Blackhawks"]},{name:"Pacific",conf:"West",teams:["Ducks","Golden Knights","Oilers","Kings","Kraken","Sharks","Flames","Canucks"]}];
+var LOGOS={"Stars":"https://assets.nhle.com/logos/nhl/svg/DAL_light.svg","Avalanche":"https://assets.nhle.com/logos/nhl/svg/COL_light.svg","Rangers":"https://assets.nhle.com/logos/nhl/svg/NYR_light.svg","Senators":"https://assets.nhle.com/logos/nhl/svg/OTT_light.svg","Canadiens":"https://assets.nhle.com/logos/nhl/svg/MTL_light.svg","Ducks":"https://assets.nhle.com/logos/nhl/svg/ANA_light.svg","Sabres":"https://assets.nhle.com/logos/nhl/svg/BUF_light.svg","Bruins":"https://assets.nhle.com/logos/nhl/svg/BOS_light.svg","Hurricanes":"https://assets.nhle.com/logos/nhl/svg/CAR_light.svg","Lightning":"https://assets.nhle.com/logos/nhl/svg/TBL_light.svg","Devils":"https://assets.nhle.com/logos/nhl/svg/NJD_light.svg","Capitals":"https://assets.nhle.com/logos/nhl/svg/WSH_light.svg","Canucks":"https://assets.nhle.com/logos/nhl/svg/VAN_light.svg","Predators":"https://assets.nhle.com/logos/nhl/svg/NSH_light.svg","Red Wings":"https://assets.nhle.com/logos/nhl/svg/DET_light.svg","Sharks":"https://assets.nhle.com/logos/nhl/svg/SJS_light.svg","Oilers":"https://assets.nhle.com/logos/nhl/svg/EDM_light.svg","Maple Leafs":"https://assets.nhle.com/logos/nhl/svg/TOR_light.svg","Panthers":"https://assets.nhle.com/logos/nhl/svg/FLA_light.svg","Blues":"https://assets.nhle.com/logos/nhl/svg/STL_light.svg","Mammoth":"https://assets.nhle.com/logos/nhl/svg/UTA_light.svg","Islanders":"https://assets.nhle.com/logos/nhl/svg/NYI_light.svg","Flyers":"https://assets.nhle.com/logos/nhl/svg/PHI_light.svg","Blackhawks":"https://assets.nhle.com/logos/nhl/svg/CHI_light.svg","Golden Knights":"https://assets.nhle.com/logos/nhl/svg/VGK_light.svg","Jets":"https://assets.nhle.com/logos/nhl/svg/WPG_light.svg","Wild":"https://assets.nhle.com/logos/nhl/svg/MIN_light.svg","Kings":"https://assets.nhle.com/logos/nhl/svg/LAK_light.svg","Blue Jackets":"https://assets.nhle.com/logos/nhl/svg/CBJ_light.svg","Flames":"https://assets.nhle.com/logos/nhl/svg/CGY_light.svg","Kraken":"https://assets.nhle.com/logos/nhl/svg/SEA_light.svg","Penguins":"https://assets.nhle.com/logos/nhl/svg/PIT_light.svg"};
+function logo(t){return LOGOS[t]||""}
+function isElim(t){return ELIMINATED.indexOf(t)>=0}
+function inPlayoffs(t){return PLAYOFF_TEAMS.indexOf(t)>=0}
+var N="#1F2937",O="#2563EB",LO="#EFF6FF",LN="#F3F4F6",GR="#16A34A",RD="#DC2626",GY="#9CA3AF",GL="#F59E0B";
+</script>
+<script type="text/babel">
+function App(){
+var h=React.useState,u=React.useEffect,r=React.useRef;
+var[tab,setTab]=h(function(){var x=location.hash.slice(1);return["standings","rosters","draft","playoffs","nhl","rules"].indexOf(x)>=0?x:"standings"});
+function go(t){setTab(t);location.hash=t}
+var[rc]=h(RC);
+var sRef=r(null);
+var[sn,setSn]=h("");
+var[se,setSe]=h("");
+var[ss,setSs]=h(false);
+
+var mgrs=MNAMES.map(function(n,i){
+var t=ROSTERS[i],tw=0,bt="",bw=-1,gp=0,pc=0;
+t.forEach(function(x){var v=rc[x]||{w:0,l:0};tw+=v.w;gp+=v.w+v.l;if(v.w>bw){bw=v.w;bt=x};if(inPlayoffs(x))pc++});
+return{name:n,teams:t,tw:tw,bt:bt,bw:bw,gp:gp,pc:pc}
+});
+var ranked=[].concat(mgrs).sort(function(a,b){return b.tw-a.tw||b.bw-a.bw});
+var topW=ranked[0]?ranked[0].tw:0;
+
+var badges={};ranked.forEach(function(m){badges[m.name]=[]});
+var bst={w:-1,m:"",t:""},wst={w:9999,m:"",t:""};
+ranked.forEach(function(m){m.teams.forEach(function(t){var w=(rc[t]||{}).w||0,g=w+((rc[t]||{}).l||0);if(w>bst.w){bst={w:w,m:m.name,t:t}};if(g>0&&w<wst.w){wst={w:w,m:m.name,t:t}}})});
+if(bst.w>0)badges[bst.m].push("Sniper ("+bst.t+" "+bst.w+"W)");
+if(wst.w<9999)badges[wst.m].push("Benchwarmer ("+wst.t+" "+wst.w+"W)");
+ranked.forEach(function(m){if(m.tw>=250)badges[m.name].push("250 Club")});
+if(ranked[0]&&ranked[0].tw>0)badges[ranked[0].name].push("League Leader");
+
+/* Playoff teams per manager */
+var elimCounts={};ranked.forEach(function(m){var ct=0;m.teams.forEach(function(t){if(isElim(t))ct++});elimCounts[m.name]=ct});
+
+/* Owner lookup */
+function getOwner(t){var own="-";mgrs.forEach(function(m){if(m.teams.indexOf(t)>=0)own=m.name});return own}
+
+function share(){if(!sRef.current)return;html2canvas(sRef.current,{backgroundColor:"#FAFAF8",scale:2}).then(function(c){c.toBlob(function(b){var f=new File([b],"nhl-tl.png",{type:"image/png"});if(navigator.share&&navigator.canShare&&navigator.canShare({files:[f]}))navigator.share({files:[f]});else{var a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=f.name;a.click()}},"image/png")})}
+
+function Tm(p){
+var[err,setErr]=h(false);
+var elim=isElim(p.name);
+var playoff=inPlayoffs(p.name);
+var nameStyle={};
+if(elim&&!p.noStrike){nameStyle={textDecoration:"line-through",textDecorationColor:RD,textDecorationThickness:"2px",opacity:0.55,color:"#999"}}
+return <span style={{display:"inline-flex",alignItems:"center",gap:4}}>
+{!err&&logo(p.name)?<img src={logo(p.name)} alt="" style={Object.assign({width:p.sz||16,height:p.sz||16,objectFit:"contain"},elim&&!p.noStrike?{opacity:0.4,filter:"grayscale(80%)"}:{})} onError={function(){setErr(true)}}/>:<span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:p.sz||16,height:p.sz||16,borderRadius:"50%",background:elim&&!p.noStrike?"#999":N,fontSize:Math.max(6,Math.round((p.sz||16)*0.4)),fontWeight:800,color:"#fff",lineHeight:1,flexShrink:0}}>{(p.name||"").slice(0,3).toUpperCase()}</span>}
+<span style={nameStyle}>{p.name}</span>
+{elim&&!p.noStrike&&<span style={{fontSize:7,fontWeight:800,color:RD,background:"#FEE2E2",padding:"1px 4px",borderRadius:3,marginLeft:2}}>OUT</span>}
+{playoff&&p.showBadge&&<span style={{fontSize:7,fontWeight:800,color:GR,background:"#DCFCE7",padding:"1px 4px",borderRadius:3,marginLeft:2}}>PLAYOFFS</span>}
+</span>
+}
+function Hd(p){return <div style={{background:N,padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{color:"#fff",fontSize:12,fontWeight:700}}>{p.children}</span>{p.r&&<span style={{color:O,fontSize:10}}>{p.r}</span>}</div>}
+function Cd(p){return <div style={Object.assign({background:"#fff",borderRadius:8,overflow:"hidden",border:"1px solid #E5E7EB"},p.s||{})}>{p.children}</div>}
+
+var tabs=[["standings","Standings"],["rosters","Rosters"],["playoffs","Playoffs"],["draft","Draft"],["nhl","NHL Standings"],["rules","Rules"]];
+
+return (
+<div>
+<div className="hdr" style={{background:N,padding:"14px 20px 10px"}}>
+<div className="hdr-row" style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end"}}>
+<div>
+<div style={{color:O,fontSize:9,fontWeight:700,letterSpacing:3}}>THE OFFICIAL</div>
+<h1 style={{color:"#fff",fontSize:28,fontWeight:900,fontFamily:"'Playfair Display',serif",lineHeight:1.1}}>NHL Team League <span style={{color:O}}>2026</span></h1>
+</div>
+<div style={{textAlign:"right"}}>
+<div style={{color:O,fontSize:10,fontWeight:700}}>DEFENDING CHAMP: RIPPE</div>
+<div style={{fontSize:9,color:"#fff6",marginTop:2}}>Est. 2025</div>
+</div>
+</div>
+<div className="tabs" style={{display:"flex",marginTop:8,borderBottom:"2px solid "+O+"33"}}>
+{tabs.map(function(t){return <button key={t[0]} onClick={function(){go(t[0])}} style={{background:tab===t[0]?O:"transparent",color:tab===t[0]?"#fff":"#fff8",padding:"7px 16px",fontSize:9,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",borderRadius:"5px 5px 0 0"}}>{t[1]}</button>})}
+</div>
+</div>
+
+<div className="cnt" style={{maxWidth:1060,margin:"0 auto",padding:"14px"}}>
+
+{/* Season Complete Banner */}
+<div style={{background:"linear-gradient(90deg,#1F2937,#374151)",borderRadius:8,padding:"12px 16px",marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+<div style={{display:"flex",alignItems:"center",gap:8}}>
+<span style={{fontSize:10,fontWeight:800,color:"#fff",background:GR,padding:"3px 10px",borderRadius:4,letterSpacing:1}}>FINAL</span>
+<span style={{fontSize:11,fontWeight:700,color:"#fff"}}>REGULAR SEASON COMPLETE</span>
+</div>
+<div style={{display:"flex",alignItems:"center",gap:8}}>
+<span style={{fontSize:9,color:GL,fontWeight:700}}>STANLEY CUP PLAYOFFS UNDERWAY</span>
+<span style={{display:"inline-block",width:8,height:8,borderRadius:"50%",background:GL,animation:"pulse 2s infinite"}}/>
+</div>
+</div>
+
+{tab==="standings"&&<div style={{animation:"fadeIn .25s"}}>
+
+<div className="prizes" style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
+{[["Reg Season","$150","$50"],["Stanley Cup Winner","$75","$25"]].map(function(x){return <div key={x[0]} style={{flex:1,minWidth:100,background:"#fff",borderRadius:8,padding:"12px",border:"1px solid #E5E7EB"}}><div style={{fontSize:8,color:GY,fontWeight:600,letterSpacing:1,textTransform:"uppercase"}}>{x[0]}</div><div style={{fontSize:20,fontWeight:900,color:N,fontFamily:"'Playfair Display',serif",marginTop:2}}>{x[1]}</div><div style={{fontSize:8,color:GY}}>{x[2]} entry</div></div>})}
+</div>
+
+<Cd s={{marginBottom:16}}><div style={{padding:"12px 16px"}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{fontSize:9,fontWeight:700,color:N,letterSpacing:1}}>SEASON PROGRESS</span><span style={{fontSize:9,fontWeight:700,color:GR}}>COMPLETE</span></div><div style={{background:"#E5E7EB",borderRadius:10,height:8,overflow:"hidden"}}><div style={{background:"linear-gradient(90deg,"+O+","+GR+")",height:"100%",borderRadius:10,width:"100%"}}/></div></div></Cd>
+
+<Cd s={{marginBottom:16}}>
+<div ref={sRef}>
+<div style={{background:N,padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:6}}><span style={{color:"#fff",fontSize:12,fontWeight:700}}>FINAL LEAGUE STANDINGS</span><button onClick={share} style={{background:O,color:"#fff",borderRadius:4,padding:"3px 8px",fontSize:8,fontWeight:700}}>SHARE</button></div>
+<table className="st" style={{width:"100%"}}><thead><tr style={{background:LN}}>{["#","MGR","FINAL WINS","GB","IN PLAYOFFS","BEST TEAM","ELIM"].map(function(hh){return <th key={hh} style={{padding:"8px",fontSize:hh==="FINAL WINS"?11:8,fontWeight:hh==="FINAL WINS"?800:700,color:hh==="FINAL WINS"?GR:hh==="IN PLAYOFFS"?O:hh==="ELIM"?RD:N,letterSpacing:1,textAlign:hh==="MGR"?"left":"center"}}>{hh}</th>})}</tr></thead>
+<tbody>{ranked.map(function(m,i){var gb=i===0?"-":(topW-m.tw);return <tr key={m.name} style={{background:i===0?LO:i%2===0?"#FAFAFA":"#fff"}}><td style={{padding:"10px 8px",textAlign:"center",fontWeight:800,fontSize:15,color:i===0?O:N,fontFamily:"'Playfair Display',serif"}}>{i+1}</td><td style={{padding:"10px 8px",fontWeight:700,fontSize:13,color:N}}>{m.name}{i===0&&<span style={{fontSize:8,fontWeight:800,color:GL,background:"#FEF3C7",padding:"1px 6px",borderRadius:3,marginLeft:6}}>WINNER</span>}</td><td style={{textAlign:"center",fontWeight:900,fontSize:20,color:GR,fontFamily:"'Playfair Display',serif"}}>{m.tw}</td><td style={{textAlign:"center",color:typeof gb==="number"?RD:GY,fontWeight:700,fontSize:13}}>{gb}</td><td style={{textAlign:"center",fontSize:12,fontWeight:800,color:O}}>{m.pc}<span style={{fontSize:8,color:GY}}>/8</span></td><td style={{textAlign:"center",fontSize:11,fontWeight:600,color:N}}>{m.bt?<Tm name={m.bt} sz={14} noStrike/>:""}{m.bw>0?" ("+String(m.bw)+"W)":""}</td><td style={{textAlign:"center",fontSize:12,fontWeight:800,color:RD}}>{elimCounts[m.name]}<span style={{fontSize:8,color:GY}}>/8</span></td></tr>})}</tbody>
+</table></div></Cd>
+
+{/* Playoff Teams by Manager */}
+<Cd s={{marginBottom:16}}><Hd r="STANLEY CUP">PLAYOFF TEAMS BY MANAGER</Hd><div style={{padding:"14px 16px"}}>{ranked.map(function(m,i){var pt=m.teams.filter(function(t){return inPlayoffs(t)});var et=m.teams.filter(function(t){return !inPlayoffs(t)});return <div key={m.name} style={{marginBottom:14,padding:"10px 12px",background:i===0?LO:"#FAFAFA",borderRadius:8,border:"1px solid #E5E7EB"}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}><span style={{fontSize:12,fontWeight:700,color:N}}>{m.name}</span><div style={{display:"flex",gap:8}}><span style={{fontSize:10,fontWeight:800,color:GR}}>{pt.length} alive</span><span style={{fontSize:10,fontWeight:800,color:RD}}>{et.length} out</span></div></div><div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:pt.length>0&&et.length>0?6:0}}>{pt.map(function(t){var w=(rc[t]||{}).w||0;return <span key={t} style={{padding:"3px 8px",borderRadius:10,background:"#DCFCE7",fontSize:9,fontWeight:700,color:"#166534",display:"inline-flex",alignItems:"center",gap:3}}><Tm name={t} sz={12} noStrike/> {w}W</span>})}</div>{et.length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:4}}>{et.map(function(t){var w=(rc[t]||{}).w||0;return <span key={t} style={{padding:"3px 8px",borderRadius:10,background:"#FEE2E2",fontSize:9,fontWeight:600,color:"#991B1B",display:"inline-flex",alignItems:"center",gap:3,opacity:0.7}}><Tm name={t} sz={12}/> {w}W</span>})}</div>}</div>})}</div></Cd>
+
+</div>}
+
+{tab==="playoffs"&&<div style={{animation:"fadeIn .25s"}}>
+
+{/* Playoff Bracket */}
+{["East","West"].map(function(conf){var series=PLAYOFF_BRACKET.filter(function(s){return s.conf===conf});return <Cd key={conf} s={{marginBottom:16}}><div style={{background:conf==="East"?"#1e40af":N,padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{color:"#fff",fontSize:12,fontWeight:700}}>{conf==="East"?"EASTERN":"WESTERN"} CONFERENCE</span><span style={{color:conf==="East"?"#93C5FD":"#FCD34D",fontSize:10,fontWeight:600}}>FIRST ROUND</span></div><div className="bracket-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:0}}>
+{series.map(function(s,si){
+var hOwner=getOwner(s.higher);
+var lOwner=getOwner(s.lower);
+var leading=s.hw>s.lw?"higher":s.lw>s.hw?"lower":"tied";
+return <div key={si} style={{padding:"12px 14px",borderBottom:si<series.length-1?"1px solid #E5E7EB":"none",borderRight:si%2===0?"1px solid #E5E7EB":"none"}}>
+<div style={{fontSize:8,fontWeight:700,color:GY,letterSpacing:1,marginBottom:6,textTransform:"uppercase"}}>{s.label}</div>
+
+{/* Higher seed */}
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 8px",borderRadius:"6px 6px 0 0",background:leading==="higher"?"#DCFCE7":"#FAFAFA",border:"1px solid",borderColor:leading==="higher"?"#BBF7D0":"#E5E7EB",borderBottom:"none"}}>
+<div style={{display:"flex",alignItems:"center",gap:6}}>
+<span style={{fontSize:8,fontWeight:700,color:GY,width:26}}>{s.seed_h}</span>
+<Tm name={s.higher} sz={16} noStrike/>
+</div>
+<div style={{display:"flex",alignItems:"center",gap:6}}>
+<span style={{fontSize:8,color:O,fontWeight:600}}>{hOwner}</span>
+<span style={{fontSize:16,fontWeight:900,color:leading==="higher"?GR:N,fontFamily:"'Playfair Display',serif",width:16,textAlign:"center"}}>{s.hw}</span>
+</div>
+</div>
+
+{/* Lower seed */}
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 8px",borderRadius:"0 0 6px 6px",background:leading==="lower"?"#DCFCE7":"#FAFAFA",border:"1px solid",borderColor:leading==="lower"?"#BBF7D0":"#E5E7EB"}}>
+<div style={{display:"flex",alignItems:"center",gap:6}}>
+<span style={{fontSize:8,fontWeight:700,color:GY,width:26}}>{s.seed_l}</span>
+<Tm name={s.lower} sz={16} noStrike/>
+</div>
+<div style={{display:"flex",alignItems:"center",gap:6}}>
+<span style={{fontSize:8,color:O,fontWeight:600}}>{lOwner}</span>
+<span style={{fontSize:16,fontWeight:900,color:leading==="lower"?GR:N,fontFamily:"'Playfair Display',serif",width:16,textAlign:"center"}}>{s.lw}</span>
+</div>
+</div>
+
+<div style={{textAlign:"center",marginTop:4,fontSize:8,fontWeight:700,color:s.hw===0&&s.lw===0?GL:GY}}>{s.series}</div>
+</div>})}
+</div></Cd>})}
+
+{/* Stanley Cup Side Bet Tracker */}
+<Cd s={{marginBottom:16}}><Hd r="$75 POT">STANLEY CUP SIDE BET</Hd><div style={{padding:"14px 16px"}}><div style={{fontSize:10,color:GY,marginBottom:12}}>Manager who drafted the Stanley Cup winner takes $75. Teams still alive in the playoffs:</div>{ranked.map(function(m){var alive=m.teams.filter(function(t){return inPlayoffs(t)});if(alive.length===0)return <div key={m.name} style={{marginBottom:8,padding:"8px 10px",background:"#FFF5F5",borderRadius:6,border:"1px solid #FEE2E2",opacity:0.6}}><div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontSize:11,fontWeight:700,color:"#999",textDecoration:"line-through"}}>{m.name}</span><span style={{fontSize:9,color:RD,fontWeight:700}}>ELIMINATED</span></div></div>;return <div key={m.name} style={{marginBottom:8,padding:"8px 10px",background:LO,borderRadius:6,border:"1px solid #BFDBFE"}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{fontSize:11,fontWeight:700,color:N}}>{m.name}</span><span style={{fontSize:10,fontWeight:800,color:GR}}>{alive.length} team{alive.length!==1?"s":""} alive</span></div><div style={{display:"flex",flexWrap:"wrap",gap:4}}>{alive.map(function(t){return <span key={t} style={{padding:"2px 8px",borderRadius:10,background:"#DCFCE7",fontSize:9,fontWeight:700,color:"#166534"}}><Tm name={t} sz={11} noStrike/></span>})}</div></div>})}</div></Cd>
+
+</div>}
+
+{tab==="rosters"&&<div className="rosters" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:12,animation:"fadeIn .25s"}}>{ranked.map(function(m){return <Cd key={m.name}><div style={{background:N,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{color:"#fff",fontWeight:700,fontSize:13}}>{m.name}</span><span style={{color:O,fontWeight:900,fontSize:18,fontFamily:"'Playfair Display',serif"}}>{m.tw}W</span></div>{badges[m.name].length>0&&<div style={{padding:"4px 10px",background:LO,fontSize:9,color:N,fontWeight:600}}>{badges[m.name].join(" | ")}</div>}<table style={{width:"100%"}}><thead><tr style={{background:LN}}><th style={{padding:"6px 10px",fontSize:8,fontWeight:700,color:N,textAlign:"left"}}>TEAM</th><th style={{padding:"6px",fontSize:10,fontWeight:800,color:GR,textAlign:"center"}}>W</th><th style={{padding:"6px",fontSize:8,color:"#CCC",textAlign:"center"}}>L</th><th style={{padding:"6px",fontSize:8,fontWeight:600,color:N,textAlign:"center"}}>STATUS</th></tr></thead><tbody>{[].concat(m.teams).sort(function(a,b){return(rc[b]||{w:0}).w-(rc[a]||{w:0}).w}).map(function(t,i){var v=rc[t]||{w:0,l:0};var elim=isElim(t);var playoff=inPlayoffs(t);return <tr key={t} style={{background:playoff?"#F0FFF4":elim?"#FFF5F5":i%2===0?"#FAFAFA":"#fff",borderLeft:t===m.bt?"3px solid "+O:"3px solid transparent"}}><td style={{padding:"7px 10px",fontSize:11,color:N}}><Tm name={t} sz={15}/></td><td style={{textAlign:"center",fontSize:14,fontWeight:800,color:elim?"#999":GR}}>{v.w}</td><td style={{textAlign:"center",fontSize:10,color:"#CCC"}}>{v.l}</td><td style={{textAlign:"center",fontSize:8,fontWeight:700}}>{playoff?<span style={{color:GR,background:"#DCFCE7",padding:"2px 6px",borderRadius:10}}>PLAYOFFS</span>:<span style={{color:RD,background:"#FEE2E2",padding:"2px 6px",borderRadius:10}}>ELIMINATED</span>}</td></tr>})}</tbody><tfoot><tr style={{background:LO}}><td style={{padding:"7px 10px",fontWeight:700,fontSize:10,color:N}}>TOTAL</td><td style={{textAlign:"center",fontWeight:900,fontSize:16,color:GR,fontFamily:"'Playfair Display',serif"}}>{m.tw}</td><td></td><td style={{textAlign:"center",fontSize:9,fontWeight:700,color:GR}}>{m.pc} in playoffs</td></tr></tfoot></table></Cd>})}</div>}
+
+{tab==="draft"&&<div style={{animation:"fadeIn .25s"}}><Cd><Hd r="LOCKED | SNAKE | 8 RDS">2025-26 DRAFT</Hd><div style={{overflowX:"auto"}}><table className="dt" style={{width:"100%",minWidth:420}}><thead><tr style={{background:N}}><th style={{padding:"6px",color:"#fff",fontSize:8,width:30}}>RD</th>{[["Rippe","1st"],["Swag","2nd"],["G$","3rd"],["Gainzy","4th"]].map(function(x){return <th key={x[0]} style={{padding:"6px 8px",color:"#fff",fontSize:10,fontWeight:700}}>{x[0]}<div style={{fontSize:7,color:O}}>{x[1]}</div></th>})}</tr></thead><tbody>{[0,1,2,3,4,5,6,7].map(function(rd){var ord=rd%2===0?[0,1,2,3]:[3,2,1,0];return <tr key={rd} style={{background:rd%2===0?"#FAFAFA":"#fff"}}><td style={{textAlign:"center",fontWeight:800,fontSize:10,color:N,background:LN,padding:6}}>{rd+1}</td>{ord.map(function(mi,c){var tm=ROSTERS[mi][rd]||"";return <td key={c} style={{padding:"6px 8px",textAlign:"center",fontSize:10,fontWeight:600,color:tm?N:"#CCC"}}>{tm?<Tm name={tm} sz={13} showBadge/>:"-"}</td>})}</tr>})}</tbody></table></div><div style={{padding:"8px 14px",background:LO,fontSize:10,color:GY}}>Draft complete. All 32 teams drafted. <span style={{color:GR,fontWeight:700}}>{PLAYOFF_TEAMS.length} teams in playoffs</span> | <span style={{color:RD,fontWeight:700}}>{ELIMINATED.length} eliminated</span></div></Cd></div>}
+
+{tab==="nhl"&&<div style={{animation:"fadeIn .25s"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:6}}><span style={{fontSize:9,fontWeight:700,color:N,letterSpacing:1}}>FINAL NHL STANDINGS 2025-26</span><div style={{display:"flex",gap:8,alignItems:"center"}}><span style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:8,color:GY}}><span style={{width:8,height:8,borderRadius:"50%",background:GR,display:"inline-block"}}/> Playoff</span><span style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:8,color:GY}}><span style={{width:8,height:8,borderRadius:"50%",background:RD,display:"inline-block"}}/> Eliminated</span></div></div><div className="divs" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:12}}>{DIVS.map(function(d){return <Cd key={d.name}><div style={{background:N,padding:"8px 12px",display:"flex",justifyContent:"space-between"}}><span style={{color:"#fff",fontSize:10,fontWeight:700}}>{d.name}</span><span style={{color:O,fontSize:8}}>{d.conf}</span></div><table style={{width:"100%"}}><thead><tr style={{background:LN}}><th style={{padding:"6px 10px",fontSize:8,fontWeight:700,color:N,textAlign:"left"}}>TEAM</th><th style={{fontSize:9,fontWeight:800,color:GR,textAlign:"center",padding:"6px"}}>W</th><th style={{fontSize:8,color:"#CCC",textAlign:"center",padding:"6px"}}>L</th><th style={{fontSize:8,fontWeight:700,color:N,textAlign:"left",padding:"6px 10px"}}>OWNER</th></tr></thead><tbody>{[].concat(d.teams).sort(function(a,b){return(rc[b]||{w:0}).w-(rc[a]||{w:0}).w}).map(function(t,i){var v=rc[t]||{w:0,l:0};var own=getOwner(t);var elim=isElim(t);return <tr key={t} style={{background:elim?"#FFF5F5":i%2===0?"#FAFAFA":"#fff"}}><td style={{padding:"6px 10px",fontSize:10,fontWeight:600,color:N}}><Tm name={t} sz={14}/></td><td style={{textAlign:"center",padding:"6px 4px"}}><span style={{fontWeight:800,color:elim?"#999":GR,fontSize:12}}>{v.w}</span></td><td style={{textAlign:"center",padding:"6px 4px"}}><span style={{color:"#CCC",fontSize:9}}>{v.l}</span></td><td style={{padding:"6px 10px",fontSize:9,color:own==="-"?"#CCC":O,fontWeight:600}}>{own}</td></tr>})}</tbody></table></Cd>})}</div></div>}
+
+{tab==="rules"&&<div style={{animation:"fadeIn .25s"}}><Cd s={{marginBottom:16}}><Hd>OFFICIAL RULES</Hd><div style={{padding:"16px"}}><div style={{fontSize:14,fontWeight:900,color:N,fontFamily:"'Playfair Display',serif",marginBottom:12}}>WINS ARE ALL THAT MATTER</div>{[["THE GAME","4 managers draft NHL teams. Most combined regular season wins across 8 teams wins."],["DRAFT","Snake format - 8 rounds, 32 teams drafted. Order randomized. Picks final."],["SCORING","Only regular season wins count. Postseason does not affect standings."],["TIEBREAKER","Manager with the single highest-winning team breaks the tie."],["ENTRY","$50 reg season, $25 Stanley Cup winner. Total: $75/manager. Pool: $225."],["STANLEY CUP","Manager who drafted the Cup winner takes $75. Rolls over if unclaimed."]].map(function(s){return <div key={s[0]} style={{marginBottom:12}}><div style={{fontSize:10,fontWeight:800,color:O,letterSpacing:2,marginBottom:4}}>{s[0]}</div><div style={{fontSize:11,color:GY,lineHeight:1.7}}>{s[1]}</div></div>})}</div></Cd><div style={{background:N,borderRadius:8,padding:"24px 16px",textAlign:"center",marginBottom:16}}><div style={{fontSize:9,color:O,fontWeight:700,letterSpacing:3}}>SUPPORT THE LEAGUE</div><div style={{fontSize:16,fontWeight:900,color:"#fff",fontFamily:"'Playfair Display',serif",margin:"6px 0"}}>Buy the Commissioner a Coffee</div><a href="https://venmo.com/michaelrippe?txn=pay&amount=1&note=NHL%20Team%20League" target="_blank" rel="noopener noreferrer" style={{display:"inline-block",background:"#008CFF",color:"#fff",textDecoration:"none",padding:"8px 24px",borderRadius:20,fontSize:12,fontWeight:700,marginTop:8}}>Venmo - $1</a></div>{ranked.some(function(m){return badges[m.name].length>0})&&<Cd s={{marginBottom:16}}><Hd>BADGES</Hd><div style={{padding:"12px 14px",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10}}>{ranked.map(function(m,i){var b=badges[m.name];if(!b.length)return null;return <div key={m.name} style={{padding:"8px 12px",background:i===0?LO:"#FAFAFA",borderRadius:6,border:"1px solid #E5E7EB"}}><div style={{fontSize:11,fontWeight:700,color:N,marginBottom:4}}>{m.name}</div>{b.map(function(x,j){return <div key={j} style={{fontSize:10,color:GY}}>{x}</div>})}</div>})}</div></Cd>}<Cd><Hd r="JOIN US">WANT TO PLAY?</Hd>{ss?<div style={{padding:"32px 16px",textAlign:"center"}}><div style={{fontSize:14,fontWeight:800,color:N}}>You are on the list!</div></div>:<div style={{padding:"16px"}}><div style={{fontSize:12,color:GY,marginBottom:14}}>Want in next season? Drop your info below.</div><div style={{marginBottom:10}}><div style={{fontSize:9,fontWeight:700,color:N,marginBottom:4}}>NAME</div><input value={sn} onChange={function(e){setSn(e.target.value)}} placeholder="Name" style={{width:"100%",padding:"10px",border:"1px solid #DDD",borderRadius:6,fontSize:12,color:N,boxSizing:"border-box"}}/></div><div style={{marginBottom:14}}><div style={{fontSize:9,fontWeight:700,color:N,marginBottom:4}}>EMAIL</div><input value={se} onChange={function(e){setSe(e.target.value)}} placeholder="email" type="email" style={{width:"100%",padding:"10px",border:"1px solid #DDD",borderRadius:6,fontSize:12,color:N,boxSizing:"border-box"}}/></div><button onClick={function(){if(sn.trim()&&se.trim()){window.open("mailto:michaelrippe@gmail.com?subject=NHL TL Interest - "+encodeURIComponent(sn)+"&body=Name: "+encodeURIComponent(sn)+"%0AEmail: "+encodeURIComponent(se));setSs(true)}}} disabled={!sn.trim()||!se.trim()} style={{width:"100%",background:sn.trim()&&se.trim()?O:"#D1D5DB",color:sn.trim()&&se.trim()?"#fff":"#999",borderRadius:6,padding:"12px",fontSize:12,fontWeight:800,cursor:sn.trim()&&se.trim()?"pointer":"not-allowed"}}>SIGN UP</button></div>}</Cd></div>}
+
+</div>
+<div style={{textAlign:"center",padding:"10px 0 14px",fontSize:8,color:GY}}>NHL Team League 2026 - Est. 2025 - $225 Pool - Defending Champ: Rippe</div>
+</div>
+);
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
