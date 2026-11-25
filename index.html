@@ -22,6 +22,7 @@ table{border-collapse:collapse}
 img,svg{max-width:100%}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes tickerScroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 .hdr{padding:14px 20px 0}
 .hdr-row{display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
 .kicker{color:#60A5FA;font-size:12px;font-weight:800;letter-spacing:.12em}
@@ -101,6 +102,24 @@ h1{color:#fff;font-size:28px;font-weight:900;line-height:1.1;font-family:'Playfa
 .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .lbl{font-size:12px;line-height:1.4}
 .footer{text-align:center;padding:10px 12px 18px;font-size:12px;color:#6B7280}
+.ticker-wrap{position:relative;max-width:100%;overflow:hidden;background:#111827;color:#F8FAFC;border-bottom:3px solid #93C5FD}
+.ticker-wrap:hover .ticker-track,.ticker-wrap:focus-within .ticker-track,.ticker-wrap.is-paused .ticker-track{animation-play-state:paused}
+.ticker-track{display:flex;align-items:center;width:max-content;white-space:nowrap;animation:tickerScroll var(--ticker-duration,80s) linear infinite}
+.tick-copy{display:inline-flex;align-items:center}
+.tick-game{display:inline-flex;align-items:center;gap:6px;padding:8px 0 8px 22px;font-size:14px;font-weight:800;line-height:1.2;color:#F8FAFC}
+.tick-game::after{content:"·";margin-left:16px;color:#E5E7EB;font-weight:800}
+.tick-side{display:inline-flex;align-items:center;gap:4px;color:#F8FAFC}
+.tick-side.owned .tick-name{background:var(--tick);color:#fff;border-radius:999px;padding:2px 8px}
+.tick-at,.tick-when,.tick-score{color:#F8FAFC}
+.tick-score{font-weight:800}
+.tick-kicker{display:inline-flex;align-items:center;padding:8px 0 8px 16px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#F8FAFC}
+.ticker-edge{position:absolute;top:0;bottom:0;width:28px;pointer-events:none;background:#111827}
+.ticker-edge.left{left:0;background:linear-gradient(90deg,#111827 40%,transparent)}
+.ticker-edge.right{right:0;background:linear-gradient(270deg,#111827 40%,transparent)}
+@media (prefers-reduced-motion: reduce){
+.ticker-track{animation:none!important;flex-wrap:wrap;width:auto;max-width:100%;white-space:normal;padding:2px 8px}
+.ticker-edge{display:none}
+}
 @media(max-width:640px){
 .hdr{padding:14px 12px 10px}
 .hdr-row{flex-direction:column;align-items:flex-start}
@@ -161,6 +180,10 @@ var BASE={
 };
 var BASE_DATE="Oct 13, 2026";
 var ESPN_URL="https://site.api.espn.com/apis/v2/sports/hockey/nhl/standings?season=2027&seasontype=2";
+var SCORE_URL="https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard";
+var TICK_MS=60000;
+var OWNER={};
+MNAMES.forEach(function(n,i){ROSTERS[i].forEach(function(t){OWNER[t]=n})});
 var CACHE_KEY="nhltl-2027-standings-v1";
 var REG_SEASON_NIGHT_END=Date.parse("2027-04-11T07:00:00Z");
 var REFRESH_MS=300000;
@@ -310,6 +333,93 @@ function fmtPct(w,g){
  if(!g)return "—";
  return (w/g).toFixed(3).replace(/^0(?=\.)/,"");
 }
+function nyYmd(date){
+ var fmt=new Intl.DateTimeFormat("en-CA",{timeZone:"America/New_York",year:"numeric",month:"2-digit",day:"2-digit"});
+ return fmt.format(date).replace(/-/g,"");
+}
+function nyYesterday(date){
+ var ymd=new Intl.DateTimeFormat("en-CA",{timeZone:"America/New_York",year:"numeric",month:"2-digit",day:"2-digit"}).format(date).split("-");
+ var prev=new Date(Date.UTC(+ymd[0], +ymd[1]-1, +ymd[2])-86400000);
+ return prev.getUTCFullYear()+String(prev.getUTCMonth()+1).padStart(2,"0")+String(prev.getUTCDate()).padStart(2,"0");
+}
+function ctStart(iso){
+ var d=new Date(iso);
+ if(isNaN(d.getTime()))return "";
+ return d.toLocaleTimeString("en-US",{timeZone:"America/Chicago",hour:"numeric",minute:"2-digit"})+" CT";
+}
+function formatGameLabel(st, iso){
+ var type=st&&st.type||{};
+ var state=type.state||"pre";
+ if(state==="pre")return ctStart(iso);
+ if(state==="post"){
+  var sd=String(type.shortDetail||type.detail||"Final");
+  return /final/i.test(sd)?sd:(type.completed?"Final":(sd||"Final"));
+ }
+ var period=Number(st.period)||0;
+ var clock=st.displayClock&&st.displayClock!=="0:00"?String(st.displayClock):"";
+ var detail=String(type.shortDetail||"");
+ if(/shootout|^SO\b/i.test(detail)||period>=5)return clock?("SO "+clock):"SO";
+ if(/end of/i.test(detail))return detail.replace(/\s+/g," ").trim();
+ var name=period===1?"1st":period===2?"2nd":period===3?"3rd":period===4?"OT":"";
+ if(name&&clock)return name+" "+clock;
+ if(detail&&!/\b(AM|PM)\b/.test(detail))return detail;
+ return name||"Live";
+}
+function scoreTeam(c){
+ var tm=c&&c.team||{};
+ return BY_ABBR[(tm.abbreviation||"").toUpperCase()]||tm.shortDisplayName||"";
+}
+function parseScoreboard(j){
+ if(!j||!Array.isArray(j.events))return null;
+ var season=j.leagues&&j.leagues[0]&&j.leagues[0].season;
+ if(season&&season.year!=null&&Number(season.year)!==SEASON_YEAR)return null;
+ var games=[];
+ j.events.forEach(function(ev){
+  var comp=ev.competitions&&ev.competitions[0];
+  if(!comp)return;
+  var away,home;
+  (comp.competitors||[]).forEach(function(t){if(t.homeAway==="away")away=t;if(t.homeAway==="home")home=t});
+  if(!away||!home)return;
+  var an=scoreTeam(away),hn=scoreTeam(home);
+  if(!ABBR[an]||!ABBR[hn])return;
+  var st=comp.status||ev.status||{};
+  var state=(st.type&&st.type.state)||"pre";
+  games.push({
+   id:String(ev.id||an+"-"+hn),
+   away:an,home:hn,
+   awayScore:state==="pre"?"":String(away.score==null?"":away.score),
+   homeScore:state==="pre"?"":String(home.score==null?"":home.score),
+   state:state,
+   live:state==="in",
+   label:formatGameLabel(st, ev.date||comp.date)
+  });
+ });
+ return games;
+}
+function fetchScoreboard(ymd){
+ return fetch(SCORE_URL+"?dates="+ymd+"&_="+Date.now()).then(function(r){
+  if(!r.ok)throw new Error("http");
+  return r.json();
+ });
+}
+function loadScoreboard(now){
+ var today=nyYmd(now||new Date());
+ var yest=nyYesterday(now||new Date());
+ function once(){
+  return fetchScoreboard(today).then(function(j){
+   var games=parseScoreboard(j);
+   if(games===null)throw new Error("season");
+   if(games.length)return {games:games,live:games.some(function(g){return g.live}),day:"today"};
+   return fetchScoreboard(yest).then(function(j2){
+    var prev=parseScoreboard(j2);
+    if(prev===null)throw new Error("season");
+    var finals=prev.filter(function(g){return g.state==="post"});
+    return {games:finals,live:false,day:finals.length?"yesterday":"today"};
+   });
+  });
+ }
+ return once().catch(function(){return once()});
+}
 function champLabel(list){
  if(list.length===1)return list[0].name;
  if(list.length===2)return list[0].name+" and "+list[1].name;
@@ -379,6 +489,13 @@ function App(){
  var metric=metricState[0],setMetric=metricState[1];
  var shareState=h("idle");
  var sharePhase=shareState[0],setShare=shareState[1];
+ var tickState=h({games:[],live:false,day:""});
+ var tick=tickState[0],setTick=tickState[1];
+ var tickPauseState=h(false);
+ var tickPaused=tickPauseState[0],setTickPaused=tickPauseState[1];
+ var reduceState=h(function(){return window.matchMedia("(prefers-reduced-motion: reduce)").matches});
+ var reduceMotion=reduceState[0],setReduce=reduceState[1];
+ var tickRef=r(null);
  var sRef=r(null);
  var loadRef=r(function(){});
  var trustedRef=r(!!boot);
@@ -435,11 +552,37 @@ function App(){
     if(!shouldPoll(rcRef.current,trusted))stop();
    });
   }
-  loadRef.current=load;
-  load();
-  if(shouldPoll(rcRef.current,trustedRef.current))timer=setInterval(function(){load()},REFRESH_MS);
-  return function(){alive=false;stop()};
+ loadRef.current=load;
+ load();
+ if(shouldPoll(rcRef.current,trustedRef.current))timer=setInterval(function(){load()},REFRESH_MS);
+ return function(){alive=false;stop()};
  },[]);
+
+ u(function(){
+  var mq=window.matchMedia("(prefers-reduced-motion: reduce)");
+  function on(){setReduce(mq.matches)}
+  if(mq.addEventListener)mq.addEventListener("change",on);
+  else if(mq.addListener)mq.addListener(on);
+  return function(){if(mq.removeEventListener)mq.removeEventListener("change",on);else if(mq.removeListener)mq.removeListener(on)};
+ },[]);
+
+ u(function(){
+  var track=tickRef.current;
+  if(!track)return;
+  function apply(){
+   if(reduceMotion){track.style.animation="none";return}
+   var distance=track.scrollWidth/2;
+   if(distance>0){
+    track.style.animationName="tickerScroll";
+    track.style.animationDuration=(distance/35)+"s";
+    track.style.animationTimingFunction="linear";
+    track.style.animationIterationCount="infinite";
+   }
+  }
+  apply();
+  var raf=requestAnimationFrame(apply);
+  return function(){cancelAnimationFrame(raf)};
+ },[tick.games,tick.day,reduceMotion]);
 
  function rec(t){return (rc&&rc[t])||{w:0,l:0,otl:0,gf:0,ga:0,gp:0,stk:"",clinch:"",rw:null,otw:null,sow:null,l10:null}}
  function gp(t){return gamesOf(rec(t))}
@@ -461,6 +604,26 @@ function App(){
  var progress=Math.min(100,totalGP/(GAMES*32)*100);
  var locked=!!(src.trusted&&rc&&dataIsFinal(rc));
  var calendarFinal=Date.now()>REG_SEASON_NIGHT_END;
+ u(function(){
+  if(locked||Date.now()>REG_SEASON_NIGHT_END)return;
+  var alive=true,timer=null,seq=0;
+  function stop(){if(timer){clearInterval(timer);timer=null}}
+  function arm(live){
+   stop();
+   if(live&&Date.now()<=REG_SEASON_NIGHT_END)timer=setInterval(run,TICK_MS);
+  }
+  function run(){
+   if(Date.now()>REG_SEASON_NIGHT_END){stop();return}
+   var my=++seq;
+   loadScoreboard(new Date()).then(function(pack){
+    if(!alive||my!==seq||!pack)return;
+    setTick(pack);
+    arm(!!pack.live);
+   }).catch(function(){});
+  }
+  run();
+  return function(){alive=false;stop()};
+ },[locked]);
 
  var badges={};ranked.forEach(function(m){badges[m.name]=[]});
  var all=[];mgrs.forEach(function(m){m.teams.forEach(function(t){all.push({t:t,m:m.name,v:rec(t)})})});
@@ -567,6 +730,29 @@ function App(){
    ${TABS.map(function(t){return html`<button key=${t[0]} type="button" role="tab" aria-selected=${tab===t[0]?"true":"false"} className=${tab===t[0]?"on":""} onClick=${function(){go(t[0])}}>${t[1]}</button>`})}
   </div>
  </div>
+ ${tick.games.length?html`<div className=${"ticker-wrap"+(tickPaused?" is-paused":"")} data-ticker="1" data-ticker-day=${tick.day} data-ticker-live=${tick.live?"1":"0"} role="region" aria-label="NHL scores" onPointerDown=${function(e){if(e.pointerType==="touch")setTickPaused(true)}} onPointerUp=${function(e){if(e.pointerType==="touch")setTickPaused(false)}} onPointerCancel=${function(){setTickPaused(false)}} onPointerLeave=${function(e){if(e.pointerType==="touch")setTickPaused(false)}}>
+  <div className="ticker-edge left" aria-hidden="true"></div>
+  <div className="ticker-track" ref=${tickRef} data-loop=${reduceMotion?"1":"2"}>
+   ${(reduceMotion?[0]:[0,1]).map(function(copy){return html`<span className="tick-copy" key=${"copy"+copy}>
+    ${tick.day==="yesterday"?html`<span className="tick-kicker">Yesterday</span>`:null}
+    ${tick.games.map(function(g){return html`<span className="tick-game" key=${g.id+"-"+copy} data-away=${g.away} data-home=${g.home} data-state=${g.state}>
+     <span className=${"tick-side"+(OWNER[g.away]?" owned":"")} data-owner=${OWNER[g.away]||""} style=${OWNER[g.away]?{"--tick":CREST[OWNER[g.away]].fill}:{}}>
+      ${OWNER[g.away]?html`<${Crest} name=${OWNER[g.away]} sz=${16} />`:null}
+      <span className="tick-name">${g.away}</span>
+      ${g.awayScore!==""?html`<span className="tick-score">${g.awayScore}</span>`:null}
+     </span>
+     <span className="tick-at">@</span>
+     <span className=${"tick-side"+(OWNER[g.home]?" owned":"")} data-owner=${OWNER[g.home]||""} style=${OWNER[g.home]?{"--tick":CREST[OWNER[g.home]].fill}:{}}>
+      ${OWNER[g.home]?html`<${Crest} name=${OWNER[g.home]} sz=${16} />`:null}
+      <span className="tick-name">${g.home}</span>
+      ${g.homeScore!==""?html`<span className="tick-score">${g.homeScore}</span>`:null}
+     </span>
+     <span className="tick-when">${g.label}</span>
+    </span>`})}
+   </span>`})}
+  </div>
+  <div className="ticker-edge right" aria-hidden="true"></div>
+ </div>`:null}
  <div className="cnt">
   <div className="status" data-phase=${src.phase} data-locked=${locked?"1":"0"} data-error=${src.error||""}>
    <div style=${{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
