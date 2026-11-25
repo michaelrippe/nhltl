@@ -82,7 +82,7 @@ h1{color:#fff;font-size:28px;font-weight:900;line-height:1.1;font-family:'Playfa
 .logo-fallback{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:#1F2937;color:#fff;font-weight:800;flex:none;line-height:1}
 .crest{position:relative;display:inline-flex;flex:none;align-items:center;justify-content:center;vertical-align:middle}
 .crest svg{display:block}
-.crest-mono{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;letter-spacing:-.04em;line-height:1;padding-bottom:8%;pointer-events:none}
+.crest-mono{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:800;letter-spacing:0;line-height:1;padding-bottom:8%;pointer-events:none}
 .mgr-name{display:flex;align-items:center;gap:8px;min-width:0}
 .top-team{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
 .meter{padding:10px 0;border-bottom:1px solid #F3F4F6}
@@ -109,7 +109,7 @@ h1{color:#fff;font-size:28px;font-weight:900;line-height:1.1;font-family:'Playfa
 .tick-game{display:inline-flex;align-items:center;gap:6px;padding:8px 0 8px 22px;font-size:14px;font-weight:800;line-height:1.2;color:#F8FAFC}
 .tick-game::after{content:"·";margin-left:16px;color:#E5E7EB;font-weight:800}
 .tick-side{display:inline-flex;align-items:center;gap:4px;color:#F8FAFC}
-.tick-side.owned .tick-name{background:var(--tick);color:#fff;border-radius:999px;padding:2px 8px}
+.tick-mark{display:inline-flex;align-items:center;justify-content:center;padding:2px;border-radius:6px;background:var(--tick);box-shadow:inset 0 0 0 2px var(--tick-ink)}
 .tick-at,.tick-when,.tick-score{color:#F8FAFC}
 .tick-score{font-weight:800}
 .tick-kicker{display:inline-flex;align-items:center;padding:8px 0 8px 16px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#F8FAFC}
@@ -159,11 +159,12 @@ var ROSTERS=[
  ["Hurricanes","Stars","Capitals","Devils","Blues","Predators","Flames","Blackhawks"]
 ];
 var CHAMPS={reg:"Rippe",cup:"Swag"};
+/* Single-letter crests. Ink on fill is at least 4.5:1. */
 var CREST={
- Rippe:{letters:"RP",fill:"#1D4ED8"},
- Gainzy:{letters:"GZ",fill:"#15803D"},
- Swaggy:{letters:"SW",fill:"#C2410C"},
- Gallup:{letters:"GL",fill:"#B91C1C"}
+ Gallup:{letter:"G",fill:"#000000",ink:"#A5ACAF"},
+ Rippe:{letter:"R",fill:"#B57EDC",ink:"#1F2937"},
+ Gainzy:{letter:"S",fill:"#D3BC8D",ink:"#111827"},
+ Swaggy:{letter:"T",fill:"#FB4F14",ink:"#111827"}
 };
 
 /* Oct 13, 2026 snapshot. Shown only after a failed load when nothing is cached. Never painted first. */
@@ -485,10 +486,10 @@ function Crest(p){
  var sz=p.sz||26,h=Math.round(sz*1.12);
  return html`<span className="crest" data-mgr=${p.name} style=${{width:sz,height:h}}>
   <svg viewBox="0 0 64 72" width=${sz} height=${h} aria-hidden="true">
-   <path d="M32 2 L58 14 V38 C58 54 46 66 32 70 C18 66 6 54 6 38 V14 Z" fill=${c.fill}></path>
-   <path d="M32 8 L52 18 V38 C52 51 43 61 32 64 C21 61 12 51 12 38 V18 Z" fill="none" stroke="#ffffff" strokeWidth="2"></path>
+   <path d="M32 2 L58 14 V38 C58 54 46 66 32 70 C18 66 6 54 6 38 V14 Z" fill=${c.fill} stroke=${c.ink} strokeWidth="3"></path>
+   <path d="M32 8 L52 18 V38 C52 51 43 61 32 64 C21 61 12 51 12 38 V18 Z" fill="none" stroke=${c.ink} strokeWidth="2"></path>
   </svg>
-  <span className="crest-mono" style=${{fontSize:Math.max(9,Math.round(sz*0.34))}}>${c.letters}</span>
+  <span className="crest-mono" data-letter=${c.letter} style=${{color:c.ink,fontSize:Math.max(11,Math.round(sz*0.5))}}>${c.letter}</span>
  </span>`;
 }
 function TeamLogo(p){
@@ -780,22 +781,23 @@ function App(){
   <div className="ticker-track" ref=${tickRef} data-loop=${reduceMotion?"1":"2"}>
    ${(reduceMotion?[0]:[0,1]).map(function(copy){return html`<span className="tick-copy" key=${"copy"+copy}>
     ${tick.day==="yesterday"?html`<span className="tick-kicker">Yesterday</span>`:null}
-    ${tick.games.map(function(g){return html`<span className="tick-game" key=${g.id+"-"+copy} data-away=${g.away} data-home=${g.home} data-state=${g.state}>
-     <span className=${"tick-side"+(OWNER[g.away]?" owned":"")} data-owner=${OWNER[g.away]||""} style=${OWNER[g.away]?{"--tick":CREST[OWNER[g.away]].fill}:{}}>
-      <${TeamLogo} name=${g.away} sz=${20} />
-      ${OWNER[g.away]?html`<${Crest} name=${OWNER[g.away]} sz=${16} />`:null}
-      <span className="tick-name">${g.away}</span>
+    ${tick.games.map(function(g){
+     var awayOwn=OWNER[g.away]?CREST[OWNER[g.away]]:null;
+     var homeOwn=OWNER[g.home]?CREST[OWNER[g.home]]:null;
+     var spoken=(g.awayScore!==""?g.away+" "+g.awayScore+" at "+g.home+" "+g.homeScore:g.away+" at "+g.home)+", "+g.label;
+     return html`<span className="tick-game" key=${g.id+"-"+copy} role="group" aria-label=${spoken} data-away=${g.away} data-home=${g.home} data-state=${g.state}>
+     <span className=${"tick-side"+(awayOwn?" owned":"")} data-owner=${OWNER[g.away]||""} style=${awayOwn?{"--tick":awayOwn.fill,"--tick-ink":awayOwn.ink}:{}}>
+      <span className="tick-mark"><${TeamLogo} name=${g.away} sz=${20} /></span>
       ${g.awayScore!==""?html`<span className="tick-score">${g.awayScore}</span>`:null}
      </span>
      <span className="tick-at">@</span>
-     <span className=${"tick-side"+(OWNER[g.home]?" owned":"")} data-owner=${OWNER[g.home]||""} style=${OWNER[g.home]?{"--tick":CREST[OWNER[g.home]].fill}:{}}>
-      <${TeamLogo} name=${g.home} sz=${20} />
-      ${OWNER[g.home]?html`<${Crest} name=${OWNER[g.home]} sz=${16} />`:null}
-      <span className="tick-name">${g.home}</span>
+     <span className=${"tick-side"+(homeOwn?" owned":"")} data-owner=${OWNER[g.home]||""} style=${homeOwn?{"--tick":homeOwn.fill,"--tick-ink":homeOwn.ink}:{}}>
+      <span className="tick-mark"><${TeamLogo} name=${g.home} sz=${20} /></span>
       ${g.homeScore!==""?html`<span className="tick-score">${g.homeScore}</span>`:null}
      </span>
      <span className="tick-when">${g.label}</span>
-    </span>`})}
+    </span>`;
+    })}
    </span>`})}
   </div>
   <div className="ticker-edge right" aria-hidden="true"></div>
