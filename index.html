@@ -22,6 +22,7 @@ table{border-collapse:collapse}
 img,svg{max-width:100%}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes tickerScroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 .hdr{padding:14px 20px 0}
 .hdr-row{display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
 .kicker{color:#60A5FA;font-size:12px;font-weight:800;letter-spacing:.12em}
@@ -76,12 +77,12 @@ h1{color:#fff;font-size:28px;font-weight:900;line-height:1.1;font-family:'Playfa
 .stk{padding:2px 6px;border-radius:3px;font-weight:800;font-size:12px}
 .stk.none{color:#6B7280;background:#F3F4F6}
 .tm{display:inline-flex;align-items:center;gap:5px;min-width:0;flex-wrap:wrap}
-.tm img{flex:none;width:16px;height:16px;object-fit:contain}
+.team-logo{display:block;object-fit:contain;flex:none;background:transparent}
 .elim{text-decoration:line-through;text-decoration-color:#DC2626;color:#999}
 .logo-fallback{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:#1F2937;color:#fff;font-weight:800;flex:none;line-height:1}
 .crest{position:relative;display:inline-flex;flex:none;align-items:center;justify-content:center;vertical-align:middle}
 .crest svg{display:block}
-.crest-mono{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;letter-spacing:-.04em;line-height:1;padding-bottom:8%;pointer-events:none}
+.crest-mono{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:800;letter-spacing:0;line-height:1;padding-bottom:8%;pointer-events:none}
 .mgr-name{display:flex;align-items:center;gap:8px;min-width:0}
 .top-team{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
 .meter{padding:10px 0;border-bottom:1px solid #F3F4F6}
@@ -101,6 +102,24 @@ h1{color:#fff;font-size:28px;font-weight:900;line-height:1.1;font-family:'Playfa
 .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .lbl{font-size:12px;line-height:1.4}
 .footer{text-align:center;padding:10px 12px 18px;font-size:12px;color:#6B7280}
+.ticker-wrap{position:relative;max-width:100%;overflow:hidden;background:#111827;color:#F8FAFC;border-bottom:3px solid #93C5FD}
+.ticker-wrap:hover .ticker-track,.ticker-wrap:focus-within .ticker-track,.ticker-wrap.is-paused .ticker-track{animation-play-state:paused}
+.ticker-track{display:flex;align-items:center;width:max-content;white-space:nowrap;animation:tickerScroll var(--ticker-duration,80s) linear infinite}
+.tick-copy{display:inline-flex;align-items:center}
+.tick-game{display:inline-flex;align-items:center;gap:6px;padding:8px 0 8px 22px;font-size:14px;font-weight:800;line-height:1.2;color:#F8FAFC}
+.tick-game::after{content:"·";margin-left:16px;color:#E5E7EB;font-weight:800}
+.tick-side{display:inline-flex;align-items:center;gap:4px;color:#F8FAFC}
+.tick-mark{display:inline-flex;align-items:center;justify-content:center;padding:2px;border-radius:6px;background:var(--tick);box-shadow:inset 0 0 0 2px var(--tick-ink)}
+.tick-at,.tick-when,.tick-score{color:#F8FAFC}
+.tick-score{font-weight:800}
+.tick-kicker{display:inline-flex;align-items:center;padding:8px 0 8px 16px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#F8FAFC}
+.ticker-edge{position:absolute;top:0;bottom:0;width:28px;pointer-events:none;background:#111827}
+.ticker-edge.left{left:0;background:linear-gradient(90deg,#111827 40%,transparent)}
+.ticker-edge.right{right:0;background:linear-gradient(270deg,#111827 40%,transparent)}
+@media (prefers-reduced-motion: reduce){
+.ticker-track{animation:none!important;flex-wrap:wrap;width:auto;max-width:100%;white-space:normal;padding:2px 8px}
+.ticker-edge{display:none}
+}
 @media(max-width:640px){
 .hdr{padding:14px 12px 10px}
 .hdr-row{flex-direction:column;align-items:flex-start}
@@ -140,11 +159,12 @@ var ROSTERS=[
  ["Hurricanes","Stars","Capitals","Devils","Blues","Predators","Flames","Blackhawks"]
 ];
 var CHAMPS={reg:"Rippe",cup:"Swag"};
+/* Single-letter crests. Ink on fill is at least 4.5:1. */
 var CREST={
- Rippe:{letters:"RP",fill:"#1D4ED8"},
- Gainzy:{letters:"GZ",fill:"#15803D"},
- Swaggy:{letters:"SW",fill:"#C2410C"},
- Gallup:{letters:"GL",fill:"#B91C1C"}
+ Gallup:{letter:"G",fill:"#000000",ink:"#A5ACAF"},
+ Rippe:{letter:"R",fill:"#B57EDC",ink:"#1F2937"},
+ Gainzy:{letter:"S",fill:"#D3BC8D",ink:"#111827"},
+ Swaggy:{letter:"T",fill:"#FB4F14",ink:"#111827"}
 };
 
 /* Oct 13, 2026 snapshot. Shown only after a failed load when nothing is cached. Never painted first. */
@@ -161,6 +181,10 @@ var BASE={
 };
 var BASE_DATE="Oct 13, 2026";
 var ESPN_URL="https://site.api.espn.com/apis/v2/sports/hockey/nhl/standings?season=2027&seasontype=2";
+var SCORE_URL="https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard";
+var TICK_MS=60000;
+var OWNER={};
+MNAMES.forEach(function(n,i){ROSTERS[i].forEach(function(t){OWNER[t]=n})});
 var CACHE_KEY="nhltl-2027-standings-v1";
 var REG_SEASON_NIGHT_END=Date.parse("2027-04-11T07:00:00Z");
 var REFRESH_MS=300000;
@@ -168,7 +192,43 @@ var REFRESH_MS=300000;
 var ABBR={"Ducks":"ANA","Bruins":"BOS","Sabres":"BUF","Flames":"CGY","Hurricanes":"CAR","Blackhawks":"CHI","Avalanche":"COL","Blue Jackets":"CBJ","Stars":"DAL","Red Wings":"DET","Oilers":"EDM","Panthers":"FLA","Kings":"LAK","Wild":"MIN","Canadiens":"MTL","Predators":"NSH","Devils":"NJD","Islanders":"NYI","Rangers":"NYR","Senators":"OTT","Flyers":"PHI","Penguins":"PIT","Sharks":"SJS","Kraken":"SEA","Blues":"STL","Lightning":"TBL","Maple Leafs":"TOR","Mammoth":"UTA","Canucks":"VAN","Golden Knights":"VGK","Capitals":"WSH","Jets":"WPG"};
 var BY_ABBR={};Object.keys(ABBR).forEach(function(k){BY_ABBR[ABBR[k]]=k});
 BY_ABBR.NJ="Devils";BY_ABBR.TB="Lightning";BY_ABBR.LA="Kings";BY_ABBR.SJ="Sharks";BY_ABBR.UTAH="Mammoth";BY_ABBR.WAS="Capitals";BY_ABBR.VEG="Golden Knights";
-function logo(t){return ABBR[t]?"https://assets.nhle.com/logos/nhl/svg/"+ABBR[t]+"_light.svg":""}
+var ESPN_SLUG={};
+Object.keys(ABBR).forEach(function(name){
+ var a=ABBR[name].toLowerCase();
+ if(a==="lak")a="la";
+ else if(a==="sjs")a="sj";
+ else if(a==="tbl")a="tb";
+ else if(a==="njd")a="nj";
+ ESPN_SLUG[name]=a;
+});
+var LOGO_URL={};
+function rememberLogo(name, team){
+ if(!name||!team||!ABBR[name])return;
+ var href="",logos=team.logos||[];
+ for(var i=0;i<logos.length;i++){
+  var item=logos[i]||{},h=item.href||"",rel=(item.rel||[]).join(" ");
+  if(!h||h.indexOf("/scoreboard/")>=0||h.indexOf("-dark")>=0)continue;
+  href=h;
+  if(/default/.test(rel))break;
+ }
+ if(!href&&logos[0]&&logos[0].href)href=logos[0].href;
+ if(!href&&team.logo)href=team.logo;
+ if(!href)return;
+ if(LOGO_URL[name]&&href.indexOf("/scoreboard/")>=0&&LOGO_URL[name].indexOf("/scoreboard/")<0)return;
+ LOGO_URL[name]=href;
+}
+function teamLogo(name, px){
+ px=px||40;
+ var raw=LOGO_URL[name];
+ var path="";
+ if(raw){
+  var m=/^https?:\/\/a\.espncdn\.com(\/i\/teamlogos\/[^?#]+)/.exec(raw);
+  path=m?m[1]:"";
+ }
+ if(!path&&ESPN_SLUG[name])path="/i/teamlogos/nhl/500/"+ESPN_SLUG[name]+".png";
+ if(!path)return "";
+ return "https://a.espncdn.com/combiner/i?img="+path+"&w="+px+"&h="+px;
+}
 
 var DIVS=[
 {name:"Atlantic",conf:"East",teams:["Bruins","Sabres","Red Wings","Panthers","Canadiens","Senators","Lightning","Maple Leafs"]},
@@ -231,6 +291,7 @@ function parseEspn(j){
   var tm=e.team||{};
   var t=BY_ABBR[(tm.abbreviation||"").toUpperCase()]||tm.shortDisplayName||tm.name||"";
   if(!ABBR[t])return;
+  rememberLogo(t, tm);
   var st={};(e.stats||[]).forEach(function(x){st[x.name]=x});
   var w=numStat(st,"wins"),l=numStat(st,"losses");
   var otl=numStat(st,"otLosses");if(otl==null)otl=numStat(st,"overtimeLosses");
@@ -310,6 +371,95 @@ function fmtPct(w,g){
  if(!g)return "—";
  return (w/g).toFixed(3).replace(/^0(?=\.)/,"");
 }
+function nyYmd(date){
+ var fmt=new Intl.DateTimeFormat("en-CA",{timeZone:"America/New_York",year:"numeric",month:"2-digit",day:"2-digit"});
+ return fmt.format(date).replace(/-/g,"");
+}
+function nyYesterday(date){
+ var ymd=new Intl.DateTimeFormat("en-CA",{timeZone:"America/New_York",year:"numeric",month:"2-digit",day:"2-digit"}).format(date).split("-");
+ var prev=new Date(Date.UTC(+ymd[0], +ymd[1]-1, +ymd[2])-86400000);
+ return prev.getUTCFullYear()+String(prev.getUTCMonth()+1).padStart(2,"0")+String(prev.getUTCDate()).padStart(2,"0");
+}
+function ctStart(iso){
+ var d=new Date(iso);
+ if(isNaN(d.getTime()))return "";
+ return d.toLocaleTimeString("en-US",{timeZone:"America/Chicago",hour:"numeric",minute:"2-digit"})+" CT";
+}
+function formatGameLabel(st, iso){
+ var type=st&&st.type||{};
+ var state=type.state||"pre";
+ if(state==="pre")return ctStart(iso);
+ if(state==="post"){
+  var sd=String(type.shortDetail||type.detail||"Final");
+  return /final/i.test(sd)?sd:(type.completed?"Final":(sd||"Final"));
+ }
+ var period=Number(st.period)||0;
+ var clock=st.displayClock&&st.displayClock!=="0:00"?String(st.displayClock):"";
+ var detail=String(type.shortDetail||"");
+ if(/shootout|^SO\b/i.test(detail)||period>=5)return clock?("SO "+clock):"SO";
+ if(/end of/i.test(detail))return detail.replace(/\s+/g," ").trim();
+ var name=period===1?"1st":period===2?"2nd":period===3?"3rd":period===4?"OT":"";
+ if(name&&clock)return name+" "+clock;
+ if(detail&&!/\b(AM|PM)\b/.test(detail))return detail;
+ return name||"Live";
+}
+function scoreTeam(c){
+ var tm=c&&c.team||{};
+ return BY_ABBR[(tm.abbreviation||"").toUpperCase()]||tm.shortDisplayName||"";
+}
+function parseScoreboard(j){
+ if(!j||!Array.isArray(j.events))return null;
+ var season=j.leagues&&j.leagues[0]&&j.leagues[0].season;
+ if(season&&season.year!=null&&Number(season.year)!==SEASON_YEAR)return null;
+ var games=[];
+ j.events.forEach(function(ev){
+  var comp=ev.competitions&&ev.competitions[0];
+  if(!comp)return;
+  var away,home;
+  (comp.competitors||[]).forEach(function(t){if(t.homeAway==="away")away=t;if(t.homeAway==="home")home=t});
+  if(!away||!home)return;
+  var an=scoreTeam(away),hn=scoreTeam(home);
+  if(!ABBR[an]||!ABBR[hn])return;
+  rememberLogo(an, away.team);
+  rememberLogo(hn, home.team);
+  var st=comp.status||ev.status||{};
+  var state=(st.type&&st.type.state)||"pre";
+  games.push({
+   id:String(ev.id||an+"-"+hn),
+   away:an,home:hn,
+   awayScore:state==="pre"?"":String(away.score==null?"":away.score),
+   homeScore:state==="pre"?"":String(home.score==null?"":home.score),
+   state:state,
+   live:state==="in",
+   label:formatGameLabel(st, ev.date||comp.date)
+  });
+ });
+ return games;
+}
+function fetchScoreboard(ymd){
+ return fetch(SCORE_URL+"?dates="+ymd+"&_="+Date.now()).then(function(r){
+  if(!r.ok)throw new Error("http");
+  return r.json();
+ });
+}
+function loadScoreboard(now){
+ var today=nyYmd(now||new Date());
+ var yest=nyYesterday(now||new Date());
+ function once(){
+  return fetchScoreboard(today).then(function(j){
+   var games=parseScoreboard(j);
+   if(games===null)throw new Error("season");
+   if(games.length)return {games:games,live:games.some(function(g){return g.live}),day:"today"};
+   return fetchScoreboard(yest).then(function(j2){
+    var prev=parseScoreboard(j2);
+    if(prev===null)throw new Error("season");
+    var finals=prev.filter(function(g){return g.state==="post"});
+    return {games:finals,live:false,day:finals.length?"yesterday":"today"};
+   });
+  });
+ }
+ return once().catch(function(){return once()});
+}
 function champLabel(list){
  if(list.length===1)return list[0].name;
  if(list.length===2)return list[0].name+" and "+list[1].name;
@@ -336,18 +486,24 @@ function Crest(p){
  var sz=p.sz||26,h=Math.round(sz*1.12);
  return html`<span className="crest" data-mgr=${p.name} style=${{width:sz,height:h}}>
   <svg viewBox="0 0 64 72" width=${sz} height=${h} aria-hidden="true">
-   <path d="M32 2 L58 14 V38 C58 54 46 66 32 70 C18 66 6 54 6 38 V14 Z" fill=${c.fill}></path>
-   <path d="M32 8 L52 18 V38 C52 51 43 61 32 64 C21 61 12 51 12 38 V18 Z" fill="none" stroke="#ffffff" strokeWidth="2"></path>
+   <path d="M32 2 L58 14 V38 C58 54 46 66 32 70 C18 66 6 54 6 38 V14 Z" fill=${c.fill} stroke=${c.ink} strokeWidth="3"></path>
+   <path d="M32 8 L52 18 V38 C52 51 43 61 32 64 C21 61 12 51 12 38 V18 Z" fill="none" stroke=${c.ink} strokeWidth="2"></path>
   </svg>
-  <span className="crest-mono" style=${{fontSize:Math.max(9,Math.round(sz*0.34))}}>${c.letters}</span>
+  <span className="crest-mono" data-letter=${c.letter} style=${{color:c.ink,fontSize:Math.max(11,Math.round(sz*0.5))}}>${c.letter}</span>
  </span>`;
 }
-function Tm(p){
+function TeamLogo(p){
  var pair=React.useState(false);var err=pair[0],setErr=pair[1];
- var sz=p.sz||16;var name=p.name;var el=!!p.elim;
+ var sz=p.sz||16;var name=p.name||"";
+ var src=err?"":teamLogo(name, Math.max(40, sz*2));
+ if(!src)return html`<span className="logo-fallback" style=${{width:sz,height:sz,fontSize:Math.max(8,Math.round(sz*.38))}}>${ABBR[name]||"?"}</span>`;
+ return html`<img className="team-logo" src=${src} alt=${name} width=${sz} height=${sz} loading="lazy" decoding="async" crossOrigin="anonymous" style=${{width:sz,height:sz,opacity:p.elim?0.4:1}} onError=${function(){setErr(true)}} />`;
+}
+function Tm(p){
+ var sz=p.sz||16;var el=!!p.elim;
  return html`<span className="tm">
-  ${(!err&&logo(name))?html`<img src=${logo(name)} alt="" width=${sz} height=${sz} style=${{width:sz,height:sz,opacity:el?0.4:1}} onError=${function(){setErr(true)}} />`:html`<span className="logo-fallback" style=${{width:sz,height:sz,fontSize:Math.max(8,Math.round(sz*.38))}}>${ABBR[name]||"?"}</span>`}
-  <span className=${el?"elim":""}>${name}</span>
+  <${TeamLogo} name=${p.name} sz=${sz} elim=${el} />
+  <span className=${el?"elim":""}>${p.name}</span>
  </span>`;
 }
 function Stk(p){
@@ -379,6 +535,13 @@ function App(){
  var metric=metricState[0],setMetric=metricState[1];
  var shareState=h("idle");
  var sharePhase=shareState[0],setShare=shareState[1];
+ var tickState=h({games:[],live:false,day:""});
+ var tick=tickState[0],setTick=tickState[1];
+ var tickPauseState=h(false);
+ var tickPaused=tickPauseState[0],setTickPaused=tickPauseState[1];
+ var reduceState=h(function(){return window.matchMedia("(prefers-reduced-motion: reduce)").matches});
+ var reduceMotion=reduceState[0],setReduce=reduceState[1];
+ var tickRef=r(null);
  var sRef=r(null);
  var loadRef=r(function(){});
  var trustedRef=r(!!boot);
@@ -435,11 +598,37 @@ function App(){
     if(!shouldPoll(rcRef.current,trusted))stop();
    });
   }
-  loadRef.current=load;
-  load();
-  if(shouldPoll(rcRef.current,trustedRef.current))timer=setInterval(function(){load()},REFRESH_MS);
-  return function(){alive=false;stop()};
+ loadRef.current=load;
+ load();
+ if(shouldPoll(rcRef.current,trustedRef.current))timer=setInterval(function(){load()},REFRESH_MS);
+ return function(){alive=false;stop()};
  },[]);
+
+ u(function(){
+  var mq=window.matchMedia("(prefers-reduced-motion: reduce)");
+  function on(){setReduce(mq.matches)}
+  if(mq.addEventListener)mq.addEventListener("change",on);
+  else if(mq.addListener)mq.addListener(on);
+  return function(){if(mq.removeEventListener)mq.removeEventListener("change",on);else if(mq.removeListener)mq.removeListener(on)};
+ },[]);
+
+ u(function(){
+  var track=tickRef.current;
+  if(!track)return;
+  function apply(){
+   if(reduceMotion){track.style.animation="none";return}
+   var distance=track.scrollWidth/2;
+   if(distance>0){
+    track.style.animationName="tickerScroll";
+    track.style.animationDuration=(distance/35)+"s";
+    track.style.animationTimingFunction="linear";
+    track.style.animationIterationCount="infinite";
+   }
+  }
+  apply();
+  var raf=requestAnimationFrame(apply);
+  return function(){cancelAnimationFrame(raf)};
+ },[tick.games,tick.day,reduceMotion]);
 
  function rec(t){return (rc&&rc[t])||{w:0,l:0,otl:0,gf:0,ga:0,gp:0,stk:"",clinch:"",rw:null,otw:null,sow:null,l10:null}}
  function gp(t){return gamesOf(rec(t))}
@@ -461,6 +650,26 @@ function App(){
  var progress=Math.min(100,totalGP/(GAMES*32)*100);
  var locked=!!(src.trusted&&rc&&dataIsFinal(rc));
  var calendarFinal=Date.now()>REG_SEASON_NIGHT_END;
+ u(function(){
+  if(locked||Date.now()>REG_SEASON_NIGHT_END)return;
+  var alive=true,timer=null,seq=0;
+  function stop(){if(timer){clearInterval(timer);timer=null}}
+  function arm(live){
+   stop();
+   if(live&&Date.now()<=REG_SEASON_NIGHT_END)timer=setInterval(run,TICK_MS);
+  }
+  function run(){
+   if(Date.now()>REG_SEASON_NIGHT_END){stop();return}
+   var my=++seq;
+   loadScoreboard(new Date()).then(function(pack){
+    if(!alive||my!==seq||!pack)return;
+    setTick(pack);
+    arm(!!pack.live);
+   }).catch(function(){});
+  }
+  run();
+  return function(){alive=false;stop()};
+ },[locked]);
 
  var badges={};ranked.forEach(function(m){badges[m.name]=[]});
  var all=[];mgrs.forEach(function(m){m.teams.forEach(function(t){all.push({t:t,m:m.name,v:rec(t)})})});
@@ -505,7 +714,7 @@ function App(){
   if(!sRef.current||sharePhase==="working")return;
   setShare("working");
   loadHtml2Canvas().then(function(h2c){
-   return h2c(sRef.current,{backgroundColor:"#FAFAF8",scale:2,onclone:function(doc){doc.querySelectorAll("img").forEach(function(img){img.remove()})}});
+   return h2c(sRef.current,{backgroundColor:"#FAFAF8",scale:2,useCORS:true});
   }).then(function(canvas){
    return new Promise(function(resolve,reject){canvas.toBlob(function(blob){blob?resolve(blob):reject(new Error("empty"))},"image/png")});
   }).then(function(blob){
@@ -567,6 +776,32 @@ function App(){
    ${TABS.map(function(t){return html`<button key=${t[0]} type="button" role="tab" aria-selected=${tab===t[0]?"true":"false"} className=${tab===t[0]?"on":""} onClick=${function(){go(t[0])}}>${t[1]}</button>`})}
   </div>
  </div>
+ ${tick.games.length?html`<div className=${"ticker-wrap"+(tickPaused?" is-paused":"")} data-ticker="1" data-ticker-day=${tick.day} data-ticker-live=${tick.live?"1":"0"} role="region" aria-label="NHL scores" onPointerDown=${function(e){if(e.pointerType==="touch")setTickPaused(true)}} onPointerUp=${function(e){if(e.pointerType==="touch")setTickPaused(false)}} onPointerCancel=${function(){setTickPaused(false)}} onPointerLeave=${function(e){if(e.pointerType==="touch")setTickPaused(false)}}>
+  <div className="ticker-edge left" aria-hidden="true"></div>
+  <div className="ticker-track" ref=${tickRef} data-loop=${reduceMotion?"1":"2"}>
+   ${(reduceMotion?[0]:[0,1]).map(function(copy){return html`<span className="tick-copy" key=${"copy"+copy}>
+    ${tick.day==="yesterday"?html`<span className="tick-kicker">Yesterday</span>`:null}
+    ${tick.games.map(function(g){
+     var awayOwn=OWNER[g.away]?CREST[OWNER[g.away]]:null;
+     var homeOwn=OWNER[g.home]?CREST[OWNER[g.home]]:null;
+     var spoken=(g.awayScore!==""?g.away+" "+g.awayScore+" at "+g.home+" "+g.homeScore:g.away+" at "+g.home)+", "+g.label;
+     return html`<span className="tick-game" key=${g.id+"-"+copy} role="group" aria-label=${spoken} data-away=${g.away} data-home=${g.home} data-state=${g.state}>
+     <span className=${"tick-side"+(awayOwn?" owned":"")} data-owner=${OWNER[g.away]||""} style=${awayOwn?{"--tick":awayOwn.fill,"--tick-ink":awayOwn.ink}:{}}>
+      <span className="tick-mark"><${TeamLogo} name=${g.away} sz=${20} /></span>
+      ${g.awayScore!==""?html`<span className="tick-score">${g.awayScore}</span>`:null}
+     </span>
+     <span className="tick-at">@</span>
+     <span className=${"tick-side"+(homeOwn?" owned":"")} data-owner=${OWNER[g.home]||""} style=${homeOwn?{"--tick":homeOwn.fill,"--tick-ink":homeOwn.ink}:{}}>
+      <span className="tick-mark"><${TeamLogo} name=${g.home} sz=${20} /></span>
+      ${g.homeScore!==""?html`<span className="tick-score">${g.homeScore}</span>`:null}
+     </span>
+     <span className="tick-when">${g.label}</span>
+    </span>`;
+    })}
+   </span>`})}
+  </div>
+  <div className="ticker-edge right" aria-hidden="true"></div>
+ </div>`:null}
  <div className="cnt">
   <div className="status" data-phase=${src.phase} data-locked=${locked?"1":"0"} data-error=${src.error||""}>
    <div style=${{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
