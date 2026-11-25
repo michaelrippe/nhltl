@@ -102,6 +102,20 @@ h1{color:#fff;font-size:28px;font-weight:900;line-height:1.1;font-family:'Playfa
 .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .lbl{font-size:12px;line-height:1.4}
 .footer{text-align:center;padding:10px 12px 18px;font-size:12px;color:#6B7280}
+.updates-link{display:inline-flex;align-items:center;min-height:44px;margin-top:2px;color:#BFDBFE;font-size:13px;font-weight:700;text-decoration:underline;text-underline-offset:3px}
+.updates-link:hover{color:#fff}
+.interest{scroll-margin-top:16px;max-width:420px;margin:4px 12px 18px;background:#fff;border:1px solid #E5E7EB;border-top:3px solid #2563EB;border-radius:8px;padding:16px}
+@media(min-width:480px){.interest{margin-left:auto;margin-right:auto}}
+.interest h2{font-family:'Playfair Display',serif;font-size:22px;font-weight:900;color:#1F2937;line-height:1.15}
+.interest .sub{font-size:14px;font-weight:700;color:#4B5563;line-height:1.45;margin:6px 0 12px}
+.interest label{display:block;font-size:13px;font-weight:800;color:#1F2937;margin:10px 0 4px}
+.interest input{width:100%;min-height:44px;border:1px solid #D1D5DB;border-radius:6px;padding:8px 12px;font:inherit;font-size:16px;font-weight:700;color:#1F2937;background:#fff}
+.interest input:focus-visible{outline:2px solid #2563EB;outline-offset:2px}
+.interest .opt{font-weight:700;color:#6B7280}
+.interest .note{font-size:14px;font-weight:800;line-height:1.4;margin-top:8px}
+.interest .note.bad{color:#991B1B}
+.interest .note.ok{color:#166534}
+.hp{position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden}
 .ticker-wrap{position:relative;max-width:100%;overflow:hidden;background:#111827;color:#F8FAFC;border-bottom:3px solid #93C5FD}
 .ticker-wrap:hover .ticker-track,.ticker-wrap:focus-within .ticker-track,.ticker-wrap.is-paused .ticker-track{animation-play-state:paused}
 .ticker-track{display:flex;align-items:center;width:max-content;white-space:nowrap;animation:tickerScroll var(--ticker-duration,80s) linear infinite}
@@ -535,6 +549,8 @@ function App(){
  var metric=metricState[0],setMetric=metricState[1];
  var shareState=h("idle");
  var sharePhase=shareState[0],setShare=shareState[1];
+ var interestState=h(function(){try{return localStorage.getItem("tl_interest")==="1"?"done":"idle"}catch(e){return "idle"}});
+ var interest=interestState[0],setInterest=interestState[1];
  var tickState=h({games:[],live:false,day:""});
  var tick=tickState[0],setTick=tickState[1];
  var tickPauseState=h(false);
@@ -710,6 +726,28 @@ function App(){
  function getOwner(t){var o="";mgrs.forEach(function(m){if(m.teams.indexOf(t)>=0)o=m.name});return o}
  function toneOf(pct){if(pct>0.5)return {label:"HOT",color:GR};if(pct<0.5)return {label:"COLD",color:RD};return {label:"EVEN",color:GL}}
 
+ function submitInterest(e){
+  e.preventDefault();
+  if(interest==="sending"||interest==="done")return;
+  var form=e.target;
+  var website=String((form.elements.website&&form.elements.website.value)||"").trim();
+  if(website){setInterest("done");return}
+  var name=String(form.elements.name.value||"").trim().slice(0,60);
+  var email=String(form.elements.email.value||"").trim().toLowerCase();
+  if(email.length>120||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){setInterest("bad");return}
+  setInterest("sending");
+  fetch("https://mlbtl26-default-rtdb.firebaseio.com/interest.json",{
+   method:"POST",
+   headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({name:name,email:email,site:"nhltl",ts:{".sv":"timestamp"}})
+  }).then(function(res){
+   if(!res.ok)throw new Error("save");
+   return res.json();
+  }).then(function(){
+   try{localStorage.setItem("tl_interest","1")}catch(err){}
+   setInterest("done");
+  }).catch(function(){setInterest("error")});
+ }
  function share(){
   if(!sRef.current||sharePhase==="working")return;
   setShare("working");
@@ -770,6 +808,7 @@ function App(){
    <div style=${{textAlign:"right"}}>
     <div className="champ-line">DEFENDING CHAMP: ${CHAMPS.reg.toUpperCase()}</div>
     <div className="est">Cup Bet Holder: ${CHAMPS.cup} · Est. 2025</div>
+    <a className="updates-link" href="#interest">Get updates</a>
    </div>
   </div>
   <div className="tabs" role="tablist">
@@ -982,6 +1021,23 @@ function App(){
    ${[["THE GAME","4 managers draft 8 NHL teams each. Most combined regular season wins across all 8 teams wins the league."],["DRAFT","Snake format, 8 rounds, all 32 NHL teams. 2026-27 order: Gainzy, Gallup, Swaggy, Rippe."],["SCORING","Regulation, overtime and shootout wins all count as 1 win. Losses of any kind count for nothing."],["TIEBREAKER","If tied on total wins, the manager whose single best team has the most wins takes it."],["REG SEASON POT","$50 buy-in. Most wins at season's end takes $150."],["STANLEY CUP SIDE BET","$25 buy-in. Own the Cup - take the pot. The manager who drafted the Stanley Cup champion takes $75."]].map(function(x){return html`<div key=${x[0]} style=${{marginBottom:12}}><div style=${{fontSize:12,fontWeight:800,color:O,letterSpacing:".06em"}}>${x[0]}</div><div style=${{fontSize:14,lineHeight:1.5}}>${x[1]}</div></div>`})}
   </div></${Cd}></div>`:null}
  </div>
+ <section className="interest" id="interest" aria-labelledby="interest-title">
+  <h2 id="interest-title">Want in next season?</h2>
+  ${interest==="done"?html`<p className="note ok" role="status">You're on the list. Thanks!</p>`:html`<form onSubmit=${submitInterest} noValidate>
+   <p className="sub">Get updates on new Team League games, the app, and how to join.</p>
+   <label htmlFor="interest-name">Name <span className="opt">(optional)</span></label>
+   <input id="interest-name" name="name" type="text" maxLength="60" autoComplete="name" />
+   <label htmlFor="interest-email">Email</label>
+   <input id="interest-email" name="email" type="email" required maxLength="120" autoComplete="email" aria-invalid=${interest==="bad"?"true":"false"} aria-describedby=${interest==="bad"||interest==="error"?"interest-note":null} />
+   <div className="hp" aria-hidden="true">
+    <label htmlFor="interest-website">Website</label>
+    <input id="interest-website" name="website" type="text" tabIndex="-1" autoComplete="off" />
+   </div>
+   <button type="submit" className="share-btn" style=${{marginTop:12}} disabled=${interest==="sending"}>Notify me</button>
+   ${interest==="bad"?html`<p className="note bad" id="interest-note" role="alert">Enter a valid email.</p>`:null}
+   ${interest==="error"?html`<p className="note bad" id="interest-note" role="alert">Couldn't save right now. Try again later.</p>`:null}
+  </form>`}
+ </section>
  <div className="footer">NHL Team League ${SEASON} · Est. 2025 · Defending Champ: Rippe · Cup: Swag</div>
 </div>`;
 }
