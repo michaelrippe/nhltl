@@ -77,7 +77,7 @@ h1{color:#fff;font-size:28px;font-weight:900;line-height:1.1;font-family:'Playfa
 .stk{padding:2px 6px;border-radius:3px;font-weight:800;font-size:12px}
 .stk.none{color:#6B7280;background:#F3F4F6}
 .tm{display:inline-flex;align-items:center;gap:5px;min-width:0;flex-wrap:wrap}
-.tm img{flex:none;width:16px;height:16px;object-fit:contain}
+.team-logo{display:block;object-fit:contain;flex:none;background:transparent}
 .elim{text-decoration:line-through;text-decoration-color:#DC2626;color:#999}
 .logo-fallback{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:#1F2937;color:#fff;font-weight:800;flex:none;line-height:1}
 .crest{position:relative;display:inline-flex;flex:none;align-items:center;justify-content:center;vertical-align:middle}
@@ -191,7 +191,43 @@ var REFRESH_MS=300000;
 var ABBR={"Ducks":"ANA","Bruins":"BOS","Sabres":"BUF","Flames":"CGY","Hurricanes":"CAR","Blackhawks":"CHI","Avalanche":"COL","Blue Jackets":"CBJ","Stars":"DAL","Red Wings":"DET","Oilers":"EDM","Panthers":"FLA","Kings":"LAK","Wild":"MIN","Canadiens":"MTL","Predators":"NSH","Devils":"NJD","Islanders":"NYI","Rangers":"NYR","Senators":"OTT","Flyers":"PHI","Penguins":"PIT","Sharks":"SJS","Kraken":"SEA","Blues":"STL","Lightning":"TBL","Maple Leafs":"TOR","Mammoth":"UTA","Canucks":"VAN","Golden Knights":"VGK","Capitals":"WSH","Jets":"WPG"};
 var BY_ABBR={};Object.keys(ABBR).forEach(function(k){BY_ABBR[ABBR[k]]=k});
 BY_ABBR.NJ="Devils";BY_ABBR.TB="Lightning";BY_ABBR.LA="Kings";BY_ABBR.SJ="Sharks";BY_ABBR.UTAH="Mammoth";BY_ABBR.WAS="Capitals";BY_ABBR.VEG="Golden Knights";
-function logo(t){return ABBR[t]?"https://assets.nhle.com/logos/nhl/svg/"+ABBR[t]+"_light.svg":""}
+var ESPN_SLUG={};
+Object.keys(ABBR).forEach(function(name){
+ var a=ABBR[name].toLowerCase();
+ if(a==="lak")a="la";
+ else if(a==="sjs")a="sj";
+ else if(a==="tbl")a="tb";
+ else if(a==="njd")a="nj";
+ ESPN_SLUG[name]=a;
+});
+var LOGO_URL={};
+function rememberLogo(name, team){
+ if(!name||!team||!ABBR[name])return;
+ var href="",logos=team.logos||[];
+ for(var i=0;i<logos.length;i++){
+  var item=logos[i]||{},h=item.href||"",rel=(item.rel||[]).join(" ");
+  if(!h||h.indexOf("/scoreboard/")>=0||h.indexOf("-dark")>=0)continue;
+  href=h;
+  if(/default/.test(rel))break;
+ }
+ if(!href&&logos[0]&&logos[0].href)href=logos[0].href;
+ if(!href&&team.logo)href=team.logo;
+ if(!href)return;
+ if(LOGO_URL[name]&&href.indexOf("/scoreboard/")>=0&&LOGO_URL[name].indexOf("/scoreboard/")<0)return;
+ LOGO_URL[name]=href;
+}
+function teamLogo(name, px){
+ px=px||40;
+ var raw=LOGO_URL[name];
+ var path="";
+ if(raw){
+  var m=/^https?:\/\/a\.espncdn\.com(\/i\/teamlogos\/[^?#]+)/.exec(raw);
+  path=m?m[1]:"";
+ }
+ if(!path&&ESPN_SLUG[name])path="/i/teamlogos/nhl/500/"+ESPN_SLUG[name]+".png";
+ if(!path)return "";
+ return "https://a.espncdn.com/combiner/i?img="+path+"&w="+px+"&h="+px;
+}
 
 var DIVS=[
 {name:"Atlantic",conf:"East",teams:["Bruins","Sabres","Red Wings","Panthers","Canadiens","Senators","Lightning","Maple Leafs"]},
@@ -254,6 +290,7 @@ function parseEspn(j){
   var tm=e.team||{};
   var t=BY_ABBR[(tm.abbreviation||"").toUpperCase()]||tm.shortDisplayName||tm.name||"";
   if(!ABBR[t])return;
+  rememberLogo(t, tm);
   var st={};(e.stats||[]).forEach(function(x){st[x.name]=x});
   var w=numStat(st,"wins"),l=numStat(st,"losses");
   var otl=numStat(st,"otLosses");if(otl==null)otl=numStat(st,"overtimeLosses");
@@ -382,6 +419,8 @@ function parseScoreboard(j){
   if(!away||!home)return;
   var an=scoreTeam(away),hn=scoreTeam(home);
   if(!ABBR[an]||!ABBR[hn])return;
+  rememberLogo(an, away.team);
+  rememberLogo(hn, home.team);
   var st=comp.status||ev.status||{};
   var state=(st.type&&st.type.state)||"pre";
   games.push({
@@ -452,12 +491,18 @@ function Crest(p){
   <span className="crest-mono" style=${{fontSize:Math.max(9,Math.round(sz*0.34))}}>${c.letters}</span>
  </span>`;
 }
-function Tm(p){
+function TeamLogo(p){
  var pair=React.useState(false);var err=pair[0],setErr=pair[1];
- var sz=p.sz||16;var name=p.name;var el=!!p.elim;
+ var sz=p.sz||16;var name=p.name||"";
+ var src=err?"":teamLogo(name, Math.max(40, sz*2));
+ if(!src)return html`<span className="logo-fallback" style=${{width:sz,height:sz,fontSize:Math.max(8,Math.round(sz*.38))}}>${ABBR[name]||"?"}</span>`;
+ return html`<img className="team-logo" src=${src} alt=${name} width=${sz} height=${sz} loading="lazy" decoding="async" crossOrigin="anonymous" style=${{width:sz,height:sz,opacity:p.elim?0.4:1}} onError=${function(){setErr(true)}} />`;
+}
+function Tm(p){
+ var sz=p.sz||16;var el=!!p.elim;
  return html`<span className="tm">
-  ${(!err&&logo(name))?html`<img src=${logo(name)} alt="" width=${sz} height=${sz} style=${{width:sz,height:sz,opacity:el?0.4:1}} onError=${function(){setErr(true)}} />`:html`<span className="logo-fallback" style=${{width:sz,height:sz,fontSize:Math.max(8,Math.round(sz*.38))}}>${ABBR[name]||"?"}</span>`}
-  <span className=${el?"elim":""}>${name}</span>
+  <${TeamLogo} name=${p.name} sz=${sz} elim=${el} />
+  <span className=${el?"elim":""}>${p.name}</span>
  </span>`;
 }
 function Stk(p){
@@ -668,7 +713,7 @@ function App(){
   if(!sRef.current||sharePhase==="working")return;
   setShare("working");
   loadHtml2Canvas().then(function(h2c){
-   return h2c(sRef.current,{backgroundColor:"#FAFAF8",scale:2,onclone:function(doc){doc.querySelectorAll("img").forEach(function(img){img.remove()})}});
+   return h2c(sRef.current,{backgroundColor:"#FAFAF8",scale:2,useCORS:true});
   }).then(function(canvas){
    return new Promise(function(resolve,reject){canvas.toBlob(function(blob){blob?resolve(blob):reject(new Error("empty"))},"image/png")});
   }).then(function(blob){
@@ -737,12 +782,14 @@ function App(){
     ${tick.day==="yesterday"?html`<span className="tick-kicker">Yesterday</span>`:null}
     ${tick.games.map(function(g){return html`<span className="tick-game" key=${g.id+"-"+copy} data-away=${g.away} data-home=${g.home} data-state=${g.state}>
      <span className=${"tick-side"+(OWNER[g.away]?" owned":"")} data-owner=${OWNER[g.away]||""} style=${OWNER[g.away]?{"--tick":CREST[OWNER[g.away]].fill}:{}}>
+      <${TeamLogo} name=${g.away} sz=${20} />
       ${OWNER[g.away]?html`<${Crest} name=${OWNER[g.away]} sz=${16} />`:null}
       <span className="tick-name">${g.away}</span>
       ${g.awayScore!==""?html`<span className="tick-score">${g.awayScore}</span>`:null}
      </span>
      <span className="tick-at">@</span>
      <span className=${"tick-side"+(OWNER[g.home]?" owned":"")} data-owner=${OWNER[g.home]||""} style=${OWNER[g.home]?{"--tick":CREST[OWNER[g.home]].fill}:{}}>
+      <${TeamLogo} name=${g.home} sz=${20} />
       ${OWNER[g.home]?html`<${Crest} name=${OWNER[g.home]} sz=${16} />`:null}
       <span className="tick-name">${g.home}</span>
       ${g.homeScore!==""?html`<span className="tick-score">${g.homeScore}</span>`:null}
